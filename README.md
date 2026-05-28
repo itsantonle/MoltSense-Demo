@@ -40,6 +40,25 @@ Key goals:
 - farm-wide molt history table with set/rack context
 - analytics report preview + CSV export
 
+## Recent Additions (UI & Functionality)
+
+- Renamed "My Racks" -> "My Sets" and added a visual, farm-oriented layout.
+- Visualized Grid: bird's-eye view of sets, racks and cells with per-cell quick links.
+- Empty-rack placeholder: shows "No cells assigned" and an "Add Cell" CTA that opens discovery.
+- Discovery flow: auto-assigns the next sequential cell number when a device is added (no manual number required).
+- Drag & drop: reorder racks within a set and reorder cells within a rack by drag-and-drop.
+- Editable rack capacity: racks have a default capacity and can be edited (capacity is normalized to not drop below assigned cells).
+- Unit toggles: weight (g / kg / lb) and temperature (C / F) persisted to localStorage.
+- LED control: toggle cell LED from the dashboard UI.
+- Per-cell history page: `/cell/[id]/history` with detailed molt and sensor timelines.
+- Farm-wide molt history table: searchable, sortable, and responsive with stacked rows on small screens.
+- Analytics: mock analytics dashboard with KPI cards, frequency lists, and CSV export of reports.
+- Form validation and friendly inline errors in discovery and add flows.
+- Custom confirm dialogs for destructive actions (delete rack, remove cell, etc.).
+- Accessibility & UX tweaks: improved dropdown/select contrast and keyboard focus rings, mobile bottom navigation now centers and supports horizontal scroll, and tiny-screen icon/text adjustments.
+
+These additions are implemented as client-side features backed by the demo `localStorage` layer so you can prototype workflows before wiring a backend.
+
 ## Hardware Components
 
 - ESP32 microcontroller
