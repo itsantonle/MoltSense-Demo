@@ -271,11 +271,11 @@ export function DashboardPage() {
                     setWeightUnit(next);
                     storageUtils.setWeightUnit(next);
                   }}
-                  className="bg-transparent text-sm text-slate-100"
+                  className="bg-slate-900/70 text-sm text-slate-100 border border-slate-600 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-cyan-500/40"
                 >
-                  <option value="g">g</option>
-                  <option value="kg">kg</option>
-                  <option value="lb">lb</option>
+                  <option value="g" className="bg-slate-900 text-slate-100">g</option>
+                  <option value="kg" className="bg-slate-900 text-slate-100">kg</option>
+                  <option value="lb" className="bg-slate-900 text-slate-100">lb</option>
                 </select>
               </div>
               <div className="flex items-center gap-2 rounded-lg bg-slate-800/60 border border-slate-700/60 px-3 py-2">
@@ -287,10 +287,10 @@ export function DashboardPage() {
                     setTempUnit(next);
                     storageUtils.setTempUnit(next);
                   }}
-                  className="bg-transparent text-sm text-slate-100"
+                  className="bg-slate-900/70 text-sm text-slate-100 border border-slate-600 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-cyan-500/40"
                 >
-                  <option value="c">C</option>
-                  <option value="f">F</option>
+                  <option value="c" className="bg-slate-900 text-slate-100">C</option>
+                  <option value="f" className="bg-slate-900 text-slate-100">F</option>
                 </select>
               </div>
             </div>

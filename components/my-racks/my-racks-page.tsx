@@ -266,11 +266,11 @@ export function MyRacksPage() {
                   setWeightUnit(next);
                   storageUtils.setWeightUnit(next);
                 }}
-                className="bg-transparent text-sm text-slate-100"
+                className="bg-slate-900/70 text-sm text-slate-100 border border-slate-600 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-cyan-500/40"
               >
-                <option value="g">g</option>
-                <option value="kg">kg</option>
-                <option value="lb">lb</option>
+                <option value="g" className="bg-slate-900 text-slate-100">g</option>
+                <option value="kg" className="bg-slate-900 text-slate-100">kg</option>
+                <option value="lb" className="bg-slate-900 text-slate-100">lb</option>
               </select>
             </div>
             <div className="flex items-center gap-2 rounded-lg bg-slate-800/60 border border-slate-700/60 px-3 py-2">
@@ -282,10 +282,10 @@ export function MyRacksPage() {
                   setTempUnit(next);
                   storageUtils.setTempUnit(next);
                 }}
-                className="bg-transparent text-sm text-slate-100"
+                className="bg-slate-900/70 text-sm text-slate-100 border border-slate-600 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-cyan-500/40"
               >
-                <option value="c">C</option>
-                <option value="f">F</option>
+                <option value="c" className="bg-slate-900 text-slate-100">C</option>
+                <option value="f" className="bg-slate-900 text-slate-100">F</option>
               </select>
             </div>
             <motion.button
@@ -531,7 +531,15 @@ export function MyRacksPage() {
 
                             <div className="space-y-2">
                               {rackCells.length === 0 ? (
-                                <div className="text-center text-xs text-slate-500 py-6">No cells assigned</div>
+                                <div className="flex items-center justify-center py-6">
+                                  <Link
+                                    href="/undiscovered"
+                                    className="inline-flex items-center gap-2 px-3 py-2 rounded-md bg-cyan-500/20 text-cyan-200 text-xs border border-cyan-500/30 hover:border-cyan-500/50 transition-colors"
+                                  >
+                                    <Plus className="w-3 h-3" />
+                                    Add Cell
+                                  </Link>
+                                </div>
                               ) : (
                                 rackCells.map((cell) => {
                                   const lastMolt = lastMoltByCellId[cell.id]?.timestamp || cell.lastMolt;

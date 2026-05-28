@@ -13,7 +13,6 @@ export function UndiscoveredPage() {
     useMoltSense();
   const [isScanning, setIsScanning] = useState(false);
   const [showAddForm, setShowAddForm] = useState<string | null>(null);
-  const [cellNumber, setCellNumber] = useState<string>('');
   const [selectedSetId, setSelectedSetId] = useState<string>('');
   const [selectedRackId, setSelectedRackId] = useState<string>('');
   const [sets, setSets] = useState<RackSet[]>([]);
@@ -76,22 +75,25 @@ export function UndiscoveredPage() {
     setTimeout(() => setIsScanning(false), 2000);
   };
 
+  const getNextCellNumber = (rackId: string) => {
+    const maxCellNumber = cells
+      .filter((cell) => cell.rackId === rackId)
+      .reduce((max, cell) => Math.max(max, cell.cellNumber), 0);
+    return maxCellNumber + 1;
+  };
+
   const handleAddDevice = async (device: UndiscoveredDevice) => {
-    if (!cellNumber || !hubs.length || !selectedRackId) return;
-
-    const numericCell = Number(cellNumber);
-    if (!Number.isInteger(numericCell) || numericCell <= 0) {
-      setFormError('Cell number must be a positive number.');
+    if (!selectedRackId) {
+      setFormError('Select a rack to assign this cell.');
       return;
     }
 
-    const existingInRack = cells.find(
-      (cell) => cell.rackId === selectedRackId && cell.cellNumber === numericCell
-    );
-    if (existingInRack) {
-      setFormError('That cell number already exists in this rack.');
+    if (!hubs.length) {
+      setFormError('No hubs available.');
       return;
     }
+
+    const nextCellNumber = getNextCellNumber(selectedRackId);
 
     try {
       // Call ESP32 registration endpoint
@@ -100,7 +102,7 @@ export function UndiscoveredPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           macAddress: device.macAddress,
-          cellNumber: numericCell,
+          cellNumber: nextCellNumber,
           hubId: hubs[0].id,
         }),
       });
@@ -113,7 +115,7 @@ export function UndiscoveredPage() {
           macAddress: device.macAddress,
           hubId: hubs[0].id,
           rackId: selectedRackId,
-          cellNumber: parseInt(cellNumber),
+          cellNumber: nextCellNumber,
           status: 'active',
           ledStatus: 'off',
           pressure: 1200,
@@ -128,7 +130,6 @@ export function UndiscoveredPage() {
         storageUtils.addCellToRack(selectedRackId, newCell.id);
         removeUndiscoveredDevice(device.macAddress);
         setShowAddForm(null);
-        setCellNumber('');
         setFormError('');
       }
     } catch (error) {
@@ -213,7 +214,6 @@ export function UndiscoveredPage() {
                       <button
                         onClick={() => {
                           setShowAddForm(null);
-                          setCellNumber('');
                           setFormError('');
                         }}
                         className="text-slate-400 hover:text-slate-200"
@@ -240,11 +240,14 @@ export function UndiscoveredPage() {
                       </label>
                       <select
                         value={selectedSetId}
-                        onChange={(e) => setSelectedSetId(e.target.value)}
-                        className="w-full px-3 py-2 rounded bg-slate-900 border border-slate-600 text-slate-100"
+                        onChange={(e) => {
+                          setSelectedSetId(e.target.value);
+                          setFormError('');
+                        }}
+                        className="w-full px-3 py-2 rounded bg-slate-900 border border-slate-600 text-slate-100 focus:outline-none focus:ring-2 focus:ring-cyan-500/40"
                       >
                         {sets.map((set) => (
-                          <option key={set.id} value={set.id}>
+                          <option key={set.id} value={set.id} className="bg-slate-900 text-slate-100">
                             {set.name}
                           </option>
                         ))}
@@ -257,12 +260,15 @@ export function UndiscoveredPage() {
                       </label>
                       <select
                         value={selectedRackId}
-                        onChange={(e) => setSelectedRackId(e.target.value)}
-                        className="w-full px-3 py-2 rounded bg-slate-900 border border-slate-600 text-slate-100"
+                        onChange={(e) => {
+                          setSelectedRackId(e.target.value);
+                          setFormError('');
+                        }}
+                        className="w-full px-3 py-2 rounded bg-slate-900 border border-slate-600 text-slate-100 focus:outline-none focus:ring-2 focus:ring-cyan-500/40"
                         disabled={racksForSelectedSet.length === 0}
                       >
                         {racksForSelectedSet.map((rack) => (
-                          <option key={rack.id} value={rack.id}>
+                          <option key={rack.id} value={rack.id} className="bg-slate-900 text-slate-100">
                             {rack.name}
                           </option>
                         ))}
@@ -271,19 +277,13 @@ export function UndiscoveredPage() {
 
                     <div>
                       <label className="block text-sm text-slate-400 mb-2">
-                        Cell Number
+                        Assigned Cell Number
                       </label>
                       <input
-                        type="number"
-                        min="1"
-                        max="100"
-                        value={cellNumber}
-                        onChange={(e) => {
-                          setCellNumber(e.target.value);
-                          setFormError('');
-                        }}
-                        placeholder="e.g., 5"
-                        className="w-full px-3 py-2 rounded bg-slate-900 border border-slate-600 text-slate-100 placeholder-slate-500"
+                        type="text"
+                        value={selectedRackId ? getNextCellNumber(selectedRackId) : 'Select a rack'}
+                        disabled
+                        className="w-full px-3 py-2 rounded bg-slate-900 border border-slate-600 text-slate-300"
                       />
                     </div>
 
@@ -298,7 +298,7 @@ export function UndiscoveredPage() {
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
                         onClick={() => handleAddDevice(device)}
-                        disabled={!cellNumber || !hubs.length || !selectedRackId || !!formError}
+                        disabled={!hubs.length || !selectedRackId || !!formError}
                         className="flex-1 px-4 py-2 bg-gradient-to-r from-green-500 to-teal-500 text-slate-900 font-bold rounded-lg hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <CheckCircle className="w-4 h-4 inline mr-2" />
@@ -307,7 +307,6 @@ export function UndiscoveredPage() {
                       <button
                         onClick={() => {
                           setShowAddForm(null);
-                          setCellNumber('');
                         }}
                         className="flex-1 px-4 py-2 bg-slate-700 text-slate-300 font-bold rounded-lg hover:bg-slate-600 transition-colors"
                       >

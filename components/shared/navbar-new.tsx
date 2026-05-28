@@ -234,9 +234,9 @@ export function NavbarNew() {
 
       {/* Mobile Bottom Tab Navigation */}
       <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-gradient-to-t from-slate-900 via-slate-800 to-slate-900 border-t border-cyan-500/20 px-2 py-2">
-        <div className="flex justify-around items-center h-20">
+        <div className="flex items-center h-20 gap-2 overflow-x-auto">
           {navItems.map((item) => (
-            <Link key={item.href} href={item.href}>
+            <Link key={item.href} href={item.href} className="shrink-0">
               <motion.button
                 whileTap={{ scale: 0.95 }}
                 onClick={() => setIsOpen(false)}

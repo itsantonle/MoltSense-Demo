@@ -200,11 +200,11 @@ export function AnalyticsPage() {
                 <select
                   value={reportRange}
                   onChange={(event) => setReportRange(event.target.value as '7d' | '30d' | '90d')}
-                  className="bg-transparent text-sm text-slate-100"
+                  className="bg-slate-900/70 text-sm text-slate-100 border border-slate-600 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-cyan-500/40"
                 >
-                  <option value="7d">Last 7 days</option>
-                  <option value="30d">Last 30 days</option>
-                  <option value="90d">Last 90 days</option>
+                  <option value="7d" className="bg-slate-900 text-slate-100">Last 7 days</option>
+                  <option value="30d" className="bg-slate-900 text-slate-100">Last 30 days</option>
+                  <option value="90d" className="bg-slate-900 text-slate-100">Last 90 days</option>
                 </select>
               </div>
               <button
