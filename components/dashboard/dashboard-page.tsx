@@ -206,38 +206,47 @@ export function DashboardPage() {
                             {rack.name}
                           </div>
                           <div className="p-2 space-y-2">
-                            {Array.from({ length: maxCells }).map((_, index) => {
+                            {(() => {
                               const rackCells = getOrderedCells(rack);
-                              const cell = rackCells[index];
-                              if (!cell) {
+                              if (rackCells.length === 0) {
                                 return (
-                                  <div
-                                    key={`${rack.id}-empty-${index}`}
-                                    className="h-10 rounded border border-dashed border-slate-700/50 bg-slate-800/30"
-                                  />
+                                  <div className="h-10 rounded border border-dashed border-slate-700/50 bg-slate-800/30 flex items-center justify-center text-[10px] text-slate-500">
+                                    No cells assigned
+                                  </div>
                                 );
                               }
-                              const lastMolt = lastMoltByCellId[cell.id]?.timestamp || cell.lastMolt;
-                              return (
-                                <Link
-                                  key={cell.id}
-                                  href={`/my-racks#${cell.id}`}
-                                  className="block"
-                                >
-                                  <div className="rounded bg-slate-800/70 border border-cyan-500/20 px-3 py-2 hover:border-cyan-500/40 transition-colors">
-                                    <div className="flex items-center justify-between text-xs text-slate-300">
-                                      <span className="truncate">Cell {cell.cellNumber}</span>
-                                      <span className={`text-[10px] ${cell.ledStatus === 'on' ? 'text-green-400' : cell.ledStatus === 'blinking' ? 'text-yellow-400' : 'text-slate-500'}`}>
-                                        LED {cell.ledStatus}
-                                      </span>
+                              return Array.from({ length: maxCells }).map((_, index) => {
+                                const cell = rackCells[index];
+                                if (!cell) {
+                                  return (
+                                    <div
+                                      key={`${rack.id}-empty-${index}`}
+                                      className="h-10 rounded border border-dashed border-slate-700/50 bg-slate-800/30"
+                                    />
+                                  );
+                                }
+                                const lastMolt = lastMoltByCellId[cell.id]?.timestamp || cell.lastMolt;
+                                return (
+                                  <Link
+                                    key={cell.id}
+                                    href={`/my-racks#${cell.id}`}
+                                    className="block"
+                                  >
+                                    <div className="rounded bg-slate-800/70 border border-cyan-500/20 px-3 py-2 hover:border-cyan-500/40 transition-colors">
+                                      <div className="flex items-center justify-between text-xs text-slate-300">
+                                        <span className="truncate">Cell {cell.cellNumber}</span>
+                                        <span className={`text-[10px] ${cell.ledStatus === 'on' ? 'text-green-400' : cell.ledStatus === 'blinking' ? 'text-yellow-400' : 'text-slate-500'}`}>
+                                          LED {cell.ledStatus}
+                                        </span>
+                                      </div>
+                                      <div className="text-[10px] text-cyan-300 mt-1">
+                                        Last molt: {lastMolt ? new Date(lastMolt).toLocaleDateString() : 'None'}
+                                      </div>
                                     </div>
-                                    <div className="text-[10px] text-cyan-300 mt-1">
-                                      Last molt: {lastMolt ? new Date(lastMolt).toLocaleDateString() : 'None'}
-                                    </div>
-                                  </div>
-                                </Link>
-                              );
-                            })}
+                                  </Link>
+                                );
+                              });
+                            })()}
                           </div>
                         </div>
                       ))}

@@ -34,6 +34,7 @@ export function MyRacksPage() {
   const [editingSetName, setEditingSetName] = useState('');
   const [editingRackId, setEditingRackId] = useState<string | null>(null);
   const [editingRackAlias, setEditingRackAlias] = useState('');
+  const [editingRackCapacity, setEditingRackCapacity] = useState('');
   const [weightUnit, setWeightUnit] = useState<WeightUnit>('g');
   const [tempUnit, setTempUnit] = useState<TemperatureUnit>('c');
   const [selectedCellId, setSelectedCellId] = useState<string | null>(null);
@@ -154,11 +155,21 @@ export function MyRacksPage() {
     });
   };
 
-  const handleSaveRackAlias = (rackId: string) => {
-    storageUtils.updateRack(rackId, { alias: editingRackAlias.trim() || undefined });
+  const handleSaveRackSettings = (rackId: string) => {
+    const parsedCapacity = Number(editingRackCapacity);
+    const rack = racksById[rackId];
+    const assignedCount = rack ? getOrderedCells(rack).length : 0;
+    const normalizedCapacity = Number.isFinite(parsedCapacity)
+      ? Math.max(assignedCount, Math.max(1, Math.floor(parsedCapacity)))
+      : Math.max(assignedCount, 1);
+    storageUtils.updateRack(rackId, {
+      alias: editingRackAlias.trim() || undefined,
+      cellLimit: normalizedCapacity,
+    });
     refreshData();
     setEditingRackId(null);
     setEditingRackAlias('');
+    setEditingRackCapacity('');
   };
 
   const handleRenameSet = (setId: string) => {
@@ -476,6 +487,7 @@ export function MyRacksPage() {
                                   onClick={() => {
                                     setEditingRackId(rack.id);
                                     setEditingRackAlias(rack.alias || '');
+                                    setEditingRackCapacity(String(rack.cellLimit));
                                   }}
                                   className="p-1 rounded text-cyan-300 hover:bg-cyan-500/10 transition-colors"
                                 >
@@ -492,25 +504,37 @@ export function MyRacksPage() {
                             </div>
 
                             {editingRackId === rack.id && (
-                              <div className="mb-4 flex items-center gap-2">
-                                <input
-                                  value={editingRackAlias}
-                                  onChange={(event) => setEditingRackAlias(event.target.value)}
-                                  placeholder="Rack alias"
-                                  className="flex-1 px-3 py-2 rounded bg-slate-900 border border-slate-700 text-slate-100 text-sm"
-                                />
-                                <button
-                                  onClick={() => handleSaveRackAlias(rack.id)}
-                                  className="px-3 py-2 rounded bg-cyan-500/20 text-cyan-200 text-sm"
-                                >
-                                  Save
-                                </button>
-                                <button
-                                  onClick={() => setEditingRackId(null)}
-                                  className="px-3 py-2 rounded bg-slate-800/60 text-slate-300 text-sm"
-                                >
-                                  Cancel
-                                </button>
+                              <div className="mb-4 flex flex-col gap-2">
+                                <div className="flex items-center gap-2">
+                                  <input
+                                    value={editingRackAlias}
+                                    onChange={(event) => setEditingRackAlias(event.target.value)}
+                                    placeholder="Rack alias"
+                                    className="flex-1 px-3 py-2 rounded bg-slate-900 border border-slate-700 text-slate-100 text-sm"
+                                  />
+                                  <input
+                                    type="number"
+                                    min="1"
+                                    value={editingRackCapacity}
+                                    onChange={(event) => setEditingRackCapacity(event.target.value)}
+                                    className="w-24 px-3 py-2 rounded bg-slate-900 border border-slate-700 text-slate-100 text-sm"
+                                    aria-label="Rack capacity"
+                                  />
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    onClick={() => handleSaveRackSettings(rack.id)}
+                                    className="px-3 py-2 rounded bg-cyan-500/20 text-cyan-200 text-sm"
+                                  >
+                                    Save
+                                  </button>
+                                  <button
+                                    onClick={() => setEditingRackId(null)}
+                                    className="px-3 py-2 rounded bg-slate-800/60 text-slate-300 text-sm"
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
                               </div>
                             )}
 
