@@ -14,6 +14,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import Link from 'next/link';
+import { ConfirmDialog } from '@/components/shared/confirm-dialog';
 
 const moveItem = <T,>(items: T[], fromIndex: number, toIndex: number): T[] => {
   const next = [...items];
@@ -31,12 +32,25 @@ export function MyRacksPage() {
   const [newSetName, setNewSetName] = useState('');
   const [editingSetId, setEditingSetId] = useState<string | null>(null);
   const [editingSetName, setEditingSetName] = useState('');
+  const [editingRackId, setEditingRackId] = useState<string | null>(null);
+  const [editingRackAlias, setEditingRackAlias] = useState('');
   const [weightUnit, setWeightUnit] = useState<WeightUnit>('g');
   const [tempUnit, setTempUnit] = useState<TemperatureUnit>('c');
   const [selectedCellId, setSelectedCellId] = useState<string | null>(null);
   const [cellDialogOpen, setCellDialogOpen] = useState(false);
+  const [cellAliasDraft, setCellAliasDraft] = useState('');
   const [draggingCellId, setDraggingCellId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [confirmState, setConfirmState] = useState<{
+    open: boolean;
+    title: string;
+    description?: string;
+    onConfirm: () => void;
+  }>({
+    open: false,
+    title: '',
+    onConfirm: () => {},
+  });
 
   useEffect(() => {
     const loadData = () => {
@@ -128,10 +142,23 @@ export function MyRacksPage() {
   };
 
   const handleDeleteRack = (rackId: string) => {
-    if (confirm('Are you sure? This will unassign all cells from this rack.')) {
-      storageUtils.deleteRack(rackId);
-      refreshData();
-    }
+    setConfirmState({
+      open: true,
+      title: 'Delete rack?',
+      description: 'This will unassign all cells from this rack.',
+      onConfirm: () => {
+        storageUtils.deleteRack(rackId);
+        refreshData();
+        setConfirmState({ open: false, title: '', onConfirm: () => {} });
+      },
+    });
+  };
+
+  const handleSaveRackAlias = (rackId: string) => {
+    storageUtils.updateRack(rackId, { alias: editingRackAlias.trim() || undefined });
+    refreshData();
+    setEditingRackId(null);
+    setEditingRackAlias('');
   };
 
   const handleRenameSet = (setId: string) => {
@@ -183,17 +210,26 @@ export function MyRacksPage() {
   const handleOpenCell = (cellId: string) => {
     if (draggingCellId === cellId) return;
     setSelectedCellId(cellId);
+    setCellAliasDraft(cellsById[cellId]?.alias || '');
     setCellDialogOpen(true);
   };
 
   const handleRemoveSelectedCell = () => {
     if (!selectedCell) return;
-    if (selectedCell.rackId) {
-      storageUtils.removeCellFromRack(selectedCell.rackId, selectedCell.id);
-    }
-    storageUtils.removeCell(selectedCell.id);
-    refreshData();
-    setCellDialogOpen(false);
+    setConfirmState({
+      open: true,
+      title: 'Remove cell?',
+      description: 'This will remove the cell and reindex remaining cell numbers.',
+      onConfirm: () => {
+        if (selectedCell.rackId) {
+          storageUtils.removeCellFromRack(selectedCell.rackId, selectedCell.id);
+        }
+        storageUtils.removeCell(selectedCell.id);
+        refreshData();
+        setCellDialogOpen(false);
+        setConfirmState({ open: false, title: '', onConfirm: () => {} });
+      },
+    });
   };
 
   if (isLoading) {
@@ -358,8 +394,10 @@ export function MyRacksPage() {
                           </button>
                         </div>
                       ) : (
-                        <div>
-                          <h2 className="text-2xl font-bold text-slate-100">{set.name}</h2>
+                        <div className="min-w-0">
+                          <h2 className="text-2xl font-bold text-slate-100 truncate">
+                            {set.name}
+                          </h2>
                           <p className="text-slate-400 text-sm">
                             {orderedRacks.length} rack{orderedRacks.length !== 1 ? 's' : ''}
                           </p>
@@ -394,7 +432,10 @@ export function MyRacksPage() {
                       No racks in this set yet
                     </div>
                   ) : (
-                    <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(${orderedRacks.length}, minmax(220px, 1fr))` }}>
+                    <div
+                      className="flex flex-col gap-4 sm:grid"
+                      style={{ gridTemplateColumns: `repeat(${orderedRacks.length}, minmax(220px, 1fr))` }}
+                    >
                       {orderedRacks.map((rack) => {
                         const rackCells = getOrderedCells(rack);
                         const capacityPercentage = (rackCells.length / rack.cellLimit) * 100;
@@ -418,11 +459,28 @@ export function MyRacksPage() {
                             className="rounded-lg bg-slate-800/70 border border-cyan-500/20 p-4"
                           >
                             <div className="flex items-center justify-between mb-3">
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-2 min-w-0">
                                 <GripVertical className="w-4 h-4 text-slate-500" />
-                                <h3 className="text-lg font-bold text-slate-100">{rack.name}</h3>
+                                <div className="min-w-0">
+                                  <h3 className="text-lg font-bold text-slate-100 truncate">
+                                    {rack.name}
+                                  </h3>
+                                  {rack.alias && (
+                                    <p className="text-xs text-slate-400 truncate">{rack.alias}</p>
+                                  )}
+                                </div>
                               </div>
                               <div className="flex gap-2">
+                                <motion.button
+                                  whileHover={{ scale: 1.05 }}
+                                  onClick={() => {
+                                    setEditingRackId(rack.id);
+                                    setEditingRackAlias(rack.alias || '');
+                                  }}
+                                  className="p-1 rounded text-cyan-300 hover:bg-cyan-500/10 transition-colors"
+                                >
+                                  <Edit2 className="w-4 h-4" />
+                                </motion.button>
                                 <motion.button
                                   whileHover={{ scale: 1.05 }}
                                   onClick={() => handleDeleteRack(rack.id)}
@@ -432,6 +490,29 @@ export function MyRacksPage() {
                                 </motion.button>
                               </div>
                             </div>
+
+                            {editingRackId === rack.id && (
+                              <div className="mb-4 flex items-center gap-2">
+                                <input
+                                  value={editingRackAlias}
+                                  onChange={(event) => setEditingRackAlias(event.target.value)}
+                                  placeholder="Rack alias"
+                                  className="flex-1 px-3 py-2 rounded bg-slate-900 border border-slate-700 text-slate-100 text-sm"
+                                />
+                                <button
+                                  onClick={() => handleSaveRackAlias(rack.id)}
+                                  className="px-3 py-2 rounded bg-cyan-500/20 text-cyan-200 text-sm"
+                                >
+                                  Save
+                                </button>
+                                <button
+                                  onClick={() => setEditingRackId(null)}
+                                  className="px-3 py-2 rounded bg-slate-800/60 text-slate-300 text-sm"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            )}
 
                             <div className="mb-4">
                               <div className="flex justify-between text-xs text-slate-400 mb-2">
@@ -479,9 +560,12 @@ export function MyRacksPage() {
                                     >
                                       <Grid className="w-4 h-4 text-slate-500 flex-shrink-0" />
                                       <div className="flex-1 min-w-0">
-                                        <p className="text-sm text-slate-200 font-medium">
+                                        <p className="text-sm text-slate-200 font-medium truncate">
                                           Cell {cell.cellNumber}
                                         </p>
+                                        {cell.alias && (
+                                          <p className="text-[11px] text-slate-400 truncate">{cell.alias}</p>
+                                        )}
                                         <p className="text-[11px] text-slate-400 truncate">
                                           {cell.macAddress}
                                         </p>
@@ -534,6 +618,27 @@ export function MyRacksPage() {
                   {selectedCell.macAddress}
                 </DialogDescription>
               </DialogHeader>
+
+              <div className="flex flex-col gap-2">
+                <label className="text-xs text-slate-400">Cell Alias</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    value={cellAliasDraft}
+                    onChange={(event) => setCellAliasDraft(event.target.value)}
+                    placeholder="e.g. Blue Crabs Group"
+                    className="flex-1 px-3 py-2 rounded bg-slate-900 border border-slate-700 text-slate-100 text-sm"
+                  />
+                  <button
+                    onClick={() => {
+                      storageUtils.updateCell(selectedCell.id, { alias: cellAliasDraft.trim() || undefined });
+                      refreshData();
+                    }}
+                    className="px-3 py-2 rounded bg-cyan-500/20 text-cyan-200 text-sm"
+                  >
+                    Save
+                  </button>
+                </div>
+              </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="p-4 rounded-lg bg-slate-800/60 border border-slate-700/60">
@@ -608,6 +713,14 @@ export function MyRacksPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={confirmState.open}
+        title={confirmState.title}
+        description={confirmState.description}
+        onConfirm={confirmState.onConfirm}
+        onCancel={() => setConfirmState({ open: false, title: '', onConfirm: () => {} })}
+      />
     </div>
   );
 }

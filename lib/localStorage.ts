@@ -3,6 +3,7 @@
 
 export interface Cell {
   id: string;
+  alias?: string;
   macAddress: string;
   hubId: string;
   rackId?: string;
@@ -40,6 +41,7 @@ export interface Hub {
 export interface Rack {
   id: string;
   name: string;
+  alias?: string;
   hubId: string;
   setId: string;
   cellLimit: number; // User-configurable limit
@@ -188,6 +190,24 @@ const ensureSets = () => {
 };
 
 export const storageUtils = {
+  reindexCellsInRack: (rackId: string) => {
+    if (typeof window === 'undefined') return;
+    const racks = storageUtils.getRacks();
+    const rack = racks.find((r) => r.id === rackId);
+    if (!rack) return;
+    const cells = storageUtils.getCells();
+    const rackCells = cells
+      .filter((cell) => cell.rackId === rackId)
+      .sort((a, b) => a.cellNumber - b.cellNumber);
+
+    rackCells.forEach((cell, index) => {
+      cell.cellNumber = index + 1;
+    });
+    rack.cells = rackCells.map((cell) => cell.id);
+
+    localStorage.setItem(STORAGE_KEYS.CELLS, JSON.stringify(cells));
+    localStorage.setItem(STORAGE_KEYS.RACKS, JSON.stringify(racks));
+  },
   // Sets
   getSets: (): RackSet[] => {
     if (typeof window === 'undefined') return [];
@@ -247,8 +267,13 @@ export const storageUtils = {
 
   removeCell: (id: string) => {
     if (typeof window === 'undefined') return;
-    const cells = storageUtils.getCells().filter((c) => c.id !== id);
-    localStorage.setItem(STORAGE_KEYS.CELLS, JSON.stringify(cells));
+    const cells = storageUtils.getCells();
+    const target = cells.find((cell) => cell.id === id);
+    const remaining = cells.filter((cell) => cell.id !== id);
+    localStorage.setItem(STORAGE_KEYS.CELLS, JSON.stringify(remaining));
+    if (target?.rackId) {
+      storageUtils.reindexCellsInRack(target.rackId);
+    }
   },
 
   // Molt Events
@@ -435,6 +460,7 @@ export const storageUtils = {
       rack.cells = rack.cells.filter((c) => c !== cellId);
       localStorage.setItem(STORAGE_KEYS.RACKS, JSON.stringify(racks));
       storageUtils.updateCell(cellId, { rackId: undefined });
+      storageUtils.reindexCellsInRack(rackId);
     }
   },
 

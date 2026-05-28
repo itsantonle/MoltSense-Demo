@@ -105,11 +105,14 @@ export function CellCard({
         <div className="h-full p-6 rounded-lg bg-gradient-to-br from-slate-800/50 to-slate-700/50 border border-cyan-500/20 hover:border-cyan-500/50 transition-all cursor-pointer group">
           {/* Header */}
           <div className="flex items-start justify-between mb-4">
-            <div>
-              <h3 className="text-xl font-bold text-slate-100 mb-1">
+            <div className="min-w-0">
+              <h3 className="text-xl font-bold text-slate-100 mb-1 truncate">
                 Cell {cell.cellNumber}
               </h3>
-              <p className="text-xs text-slate-500 font-mono">
+              {cell.alias && (
+                <p className="text-xs text-slate-400 truncate">{cell.alias}</p>
+              )}
+              <p className="text-xs text-slate-500 font-mono truncate">
                 {cell.macAddress}
               </p>
             </div>

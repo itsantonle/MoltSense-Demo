@@ -9,7 +9,7 @@ import { Wifi, Plus, CheckCircle, AlertCircle, RefreshCw, X } from 'lucide-react
 import gsap from 'gsap';
 
 export function UndiscoveredPage() {
-  const { undiscoveredDevices, addUndiscoveredDevice, removeUndiscoveredDevice, addCell, hubs } =
+  const { undiscoveredDevices, addUndiscoveredDevice, removeUndiscoveredDevice, addCell, hubs, cells } =
     useMoltSense();
   const [isScanning, setIsScanning] = useState(false);
   const [showAddForm, setShowAddForm] = useState<string | null>(null);
@@ -18,6 +18,7 @@ export function UndiscoveredPage() {
   const [selectedRackId, setSelectedRackId] = useState<string>('');
   const [sets, setSets] = useState<RackSet[]>([]);
   const [racks, setRacks] = useState<Rack[]>([]);
+  const [formError, setFormError] = useState<string>('');
   const scannerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -78,6 +79,20 @@ export function UndiscoveredPage() {
   const handleAddDevice = async (device: UndiscoveredDevice) => {
     if (!cellNumber || !hubs.length || !selectedRackId) return;
 
+    const numericCell = Number(cellNumber);
+    if (!Number.isInteger(numericCell) || numericCell <= 0) {
+      setFormError('Cell number must be a positive number.');
+      return;
+    }
+
+    const existingInRack = cells.find(
+      (cell) => cell.rackId === selectedRackId && cell.cellNumber === numericCell
+    );
+    if (existingInRack) {
+      setFormError('That cell number already exists in this rack.');
+      return;
+    }
+
     try {
       // Call ESP32 registration endpoint
       const response = await fetch('/api/esp32/register', {
@@ -85,7 +100,7 @@ export function UndiscoveredPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           macAddress: device.macAddress,
-          cellNumber: parseInt(cellNumber),
+          cellNumber: numericCell,
           hubId: hubs[0].id,
         }),
       });
@@ -114,6 +129,7 @@ export function UndiscoveredPage() {
         removeUndiscoveredDevice(device.macAddress);
         setShowAddForm(null);
         setCellNumber('');
+        setFormError('');
       }
     } catch (error) {
       console.error('Error registering device:', error);
@@ -198,6 +214,7 @@ export function UndiscoveredPage() {
                         onClick={() => {
                           setShowAddForm(null);
                           setCellNumber('');
+                          setFormError('');
                         }}
                         className="text-slate-400 hover:text-slate-200"
                       >
@@ -261,18 +278,27 @@ export function UndiscoveredPage() {
                         min="1"
                         max="100"
                         value={cellNumber}
-                        onChange={(e) => setCellNumber(e.target.value)}
+                        onChange={(e) => {
+                          setCellNumber(e.target.value);
+                          setFormError('');
+                        }}
                         placeholder="e.g., 5"
                         className="w-full px-3 py-2 rounded bg-slate-900 border border-slate-600 text-slate-100 placeholder-slate-500"
                       />
                     </div>
+
+                    {formError && (
+                      <div className="rounded bg-red-500/10 border border-red-500/30 px-3 py-2 text-sm text-red-300">
+                        {formError}
+                      </div>
+                    )}
 
                     <div className="flex gap-2">
                       <motion.button
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
                         onClick={() => handleAddDevice(device)}
-                        disabled={!cellNumber || !hubs.length || !selectedRackId}
+                        disabled={!cellNumber || !hubs.length || !selectedRackId || !!formError}
                         className="flex-1 px-4 py-2 bg-gradient-to-r from-green-500 to-teal-500 text-slate-900 font-bold rounded-lg hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <CheckCircle className="w-4 h-4 inline mr-2" />

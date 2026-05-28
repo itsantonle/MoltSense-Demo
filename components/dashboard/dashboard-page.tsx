@@ -186,7 +186,9 @@ export function DashboardPage() {
                     className="rounded-lg border border-cyan-500/20 bg-slate-800/50 p-4"
                   >
                     <div className="flex items-center justify-between mb-3">
-                      <h3 className="text-lg font-bold text-slate-100">{set.name}</h3>
+                      <h3 className="text-lg font-bold text-slate-100 truncate max-w-[70%]">
+                        {set.name}
+                      </h3>
                       <Link
                         href="/my-racks"
                         className="text-sm text-cyan-300 hover:text-cyan-200"
@@ -195,12 +197,12 @@ export function DashboardPage() {
                       </Link>
                     </div>
                     <div
-                      className="grid gap-2"
+                      className="flex flex-col gap-2 sm:grid"
                       style={{ gridTemplateColumns: `repeat(${Math.max(1, setRacks.length)}, minmax(140px, 1fr))` }}
                     >
                       {setRacks.map((rack) => (
                         <div key={rack.id} className="rounded bg-slate-900/50 border border-slate-700/50">
-                          <div className="px-3 py-2 text-xs font-semibold text-slate-300 border-b border-slate-700/50">
+                          <div className="px-3 py-2 text-xs font-semibold text-slate-300 border-b border-slate-700/50 truncate">
                             {rack.name}
                           </div>
                           <div className="p-2 space-y-2">
@@ -224,7 +226,7 @@ export function DashboardPage() {
                                 >
                                   <div className="rounded bg-slate-800/70 border border-cyan-500/20 px-3 py-2 hover:border-cyan-500/40 transition-colors">
                                     <div className="flex items-center justify-between text-xs text-slate-300">
-                                      <span>Cell {cell.cellNumber}</span>
+                                      <span className="truncate">Cell {cell.cellNumber}</span>
                                       <span className={`text-[10px] ${cell.ledStatus === 'on' ? 'text-green-400' : cell.ledStatus === 'blinking' ? 'text-yellow-400' : 'text-slate-500'}`}>
                                         LED {cell.ledStatus}
                                       </span>
@@ -254,41 +256,43 @@ export function DashboardPage() {
           transition={{ delay: 0.1 }}
           className="mb-12"
         >
-          <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
             <div className="flex items-center gap-2">
               <AlertCircle className="w-5 h-5 text-amber-400" />
               <h2 className="text-2xl font-bold text-slate-100">Recently Active</h2>
             </div>
-            <div className="flex items-center gap-2 rounded-lg bg-slate-800/60 border border-slate-700/60 px-3 py-2">
-              <span className="text-xs text-slate-400">Weight unit</span>
-              <select
-                value={weightUnit}
-                onChange={(event) => {
-                  const next = event.target.value as WeightUnit;
-                  setWeightUnit(next);
-                  storageUtils.setWeightUnit(next);
-                }}
-                className="bg-transparent text-sm text-slate-100"
-              >
-                <option value="g">g</option>
-                <option value="kg">kg</option>
-                <option value="lb">lb</option>
-              </select>
-            </div>
-            <div className="flex items-center gap-2 rounded-lg bg-slate-800/60 border border-slate-700/60 px-3 py-2">
-              <span className="text-xs text-slate-400">Temp unit</span>
-              <select
-                value={tempUnit}
-                onChange={(event) => {
-                  const next = event.target.value as TemperatureUnit;
-                  setTempUnit(next);
-                  storageUtils.setTempUnit(next);
-                }}
-                className="bg-transparent text-sm text-slate-100"
-              >
-                <option value="c">C</option>
-                <option value="f">F</option>
-              </select>
+            <div className="flex items-center gap-2 flex-nowrap">
+              <div className="flex items-center gap-2 rounded-lg bg-slate-800/60 border border-slate-700/60 px-3 py-2">
+                <span className="text-xs text-slate-400">Weight unit</span>
+                <select
+                  value={weightUnit}
+                  onChange={(event) => {
+                    const next = event.target.value as WeightUnit;
+                    setWeightUnit(next);
+                    storageUtils.setWeightUnit(next);
+                  }}
+                  className="bg-transparent text-sm text-slate-100"
+                >
+                  <option value="g">g</option>
+                  <option value="kg">kg</option>
+                  <option value="lb">lb</option>
+                </select>
+              </div>
+              <div className="flex items-center gap-2 rounded-lg bg-slate-800/60 border border-slate-700/60 px-3 py-2">
+                <span className="text-xs text-slate-400">Temp unit</span>
+                <select
+                  value={tempUnit}
+                  onChange={(event) => {
+                    const next = event.target.value as TemperatureUnit;
+                    setTempUnit(next);
+                    storageUtils.setTempUnit(next);
+                  }}
+                  className="bg-transparent text-sm text-slate-100"
+                >
+                  <option value="c">C</option>
+                  <option value="f">F</option>
+                </select>
+              </div>
             </div>
           </div>
           {recentCells.length === 0 ? (
