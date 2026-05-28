@@ -223,7 +223,7 @@ export function MoltHistoryPage() {
           </motion.div>
         ) : (
           <div className="rounded-lg border border-cyan-500/20 overflow-hidden">
-            <div className="grid grid-cols-6 gap-2 bg-slate-900/70 text-xs text-slate-400 px-4 py-3">
+            <div className="hidden sm:grid grid-cols-6 gap-2 bg-slate-900/70 text-xs text-slate-400 px-4 py-3">
               <span>Date</span>
               <span>Cell</span>
               <span>Rack</span>
@@ -237,19 +237,39 @@ export function MoltHistoryPage() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: idx * 0.02 }}
-                className="grid grid-cols-6 gap-2 px-4 py-3 text-sm text-slate-200 border-t border-slate-800"
+                className="flex flex-col gap-2 px-4 py-3 text-xs sm:text-sm text-slate-200 border-t border-slate-800 sm:grid sm:grid-cols-6 sm:gap-2"
               >
-                <div>
-                  <p className="text-slate-100">{new Date(event.timestamp).toLocaleDateString()}</p>
-                  <p className="text-xs text-slate-400">{new Date(event.timestamp).toLocaleTimeString()}</p>
+                <div className="flex items-center justify-between sm:block">
+                  <span className="text-[10px] text-slate-500 sm:hidden">Date</span>
+                  <div className="text-right sm:text-left">
+                    <p className="text-slate-100">{new Date(event.timestamp).toLocaleDateString()}</p>
+                    <p className="text-[10px] sm:text-xs text-slate-400">
+                      {new Date(event.timestamp).toLocaleTimeString()}
+                    </p>
+                  </div>
                 </div>
-                <span>{cell ? `Cell ${cell.cellNumber}` : 'Unknown'}</span>
-                <span>{rack?.name || 'Unassigned'}</span>
-                <span>{set?.name || 'Unassigned'}</span>
-                <span>{event.duration}h</span>
-                <span className={`text-xs font-semibold ${event.acknowledged ? 'text-green-400' : 'text-yellow-300'}`}>
-                  {event.acknowledged ? 'Acknowledged' : 'Pending'}
-                </span>
+                <div className="flex items-center justify-between sm:block">
+                  <span className="text-[10px] text-slate-500 sm:hidden">Cell</span>
+                  <span>{cell ? `Cell ${cell.cellNumber}` : 'Unknown'}</span>
+                </div>
+                <div className="flex items-center justify-between sm:block">
+                  <span className="text-[10px] text-slate-500 sm:hidden">Rack</span>
+                  <span>{rack?.name || 'Unassigned'}</span>
+                </div>
+                <div className="flex items-center justify-between sm:block">
+                  <span className="text-[10px] text-slate-500 sm:hidden">Set</span>
+                  <span>{set?.name || 'Unassigned'}</span>
+                </div>
+                <div className="flex items-center justify-between sm:block">
+                  <span className="text-[10px] text-slate-500 sm:hidden">Duration</span>
+                  <span>{event.duration}h</span>
+                </div>
+                <div className="flex items-center justify-between sm:block">
+                  <span className="text-[10px] text-slate-500 sm:hidden">Status</span>
+                  <span className={`text-xs font-semibold ${event.acknowledged ? 'text-green-400' : 'text-yellow-300'}`}>
+                    {event.acknowledged ? 'Acknowledged' : 'Pending'}
+                  </span>
+                </div>
               </motion.div>
             ))}
           </div>

@@ -234,20 +234,22 @@ export function NavbarNew() {
 
       {/* Mobile Bottom Tab Navigation */}
       <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-gradient-to-t from-slate-900 via-slate-800 to-slate-900 border-t border-cyan-500/20 px-2 py-2">
-        <div className="flex items-center h-20 gap-2 overflow-x-auto">
+        <div className="flex items-center h-16 sm:h-20 gap-2 overflow-x-auto">
           {navItems.map((item) => (
             <Link key={item.href} href={item.href} className="shrink-0">
               <motion.button
                 whileTap={{ scale: 0.95 }}
                 onClick={() => setIsOpen(false)}
-                className={`flex flex-col items-center gap-1 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
+                className={`flex flex-col items-center gap-1 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg text-[10px] sm:text-xs font-medium transition-colors ${
                   isActive(item.href)
                     ? 'text-cyan-400 bg-cyan-400/10'
                     : 'text-slate-400 hover:text-cyan-300'
                 }`}
               >
-                <item.icon className="w-5 h-5 text-cyan-300" />
-                <span className="text-xs">{item.label.split(' ')[0]}</span>
+                <item.icon className="w-5 h-5 text-cyan-300 max-[380px]:hidden" />
+                <span className="text-[10px] sm:text-xs">
+                  {item.label.split(' ')[0]}
+                </span>
               </motion.button>
             </Link>
           ))}
