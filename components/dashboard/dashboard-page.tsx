@@ -8,6 +8,7 @@ import { storageUtils } from '@/lib/localStorage';
 import Link from 'next/link';
 import { Plus, AlertCircle, Info } from 'lucide-react';
 import { CellCard } from './cell-card';
+import { sendLedCommand } from '@/lib/esp32';
 import { SortOption } from './sort-dropdown';
 import { TemperatureUnit, WeightUnit } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -39,27 +40,9 @@ export function DashboardPage() {
   }, [cells]);
   const handleToggleLed = (cell: Cell) => {
     const nextStatus = cell.ledStatus === 'on' ? 'off' : 'on';
+    sendLedCommand(cell.macAddress, nextStatus);
     updateCell(cell.id, { ledStatus: nextStatus });
   };
-
-  // Simulate ESP32 sensor data updates
-  useEffect(() => {
-    if (cells.length === 0) return;
-
-    const interval = setInterval(() => {
-      cells.forEach((cell) => {
-        updateCell(cell.id, {
-          pressure: Math.max(900, Math.min(1400, cell.pressure + (Math.random() - 0.5) * 20)),
-          moisture: Math.max(40, Math.min(85, cell.moisture + (Math.random() - 0.5) * 5)),
-          bioimpedance: Math.max(300, Math.min(500, cell.bioimpedance + (Math.random() - 0.5) * 15)),
-          temperature: Math.max(22, Math.min(26, cell.temperature + (Math.random() - 0.5) * 0.5)),
-          humidity: Math.max(70, Math.min(85, cell.humidity + (Math.random() - 0.5) * 2)),
-        });
-      });
-    }, 3000);
-
-    return () => clearInterval(interval);
-  }, [cells, updateCell]);
 
   const getRackCells = (rackId: string): Cell[] => {
     return cells.filter((c) => c.rackId === rackId);

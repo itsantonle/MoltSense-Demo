@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { esp32Store } from '@/app/api/esp32/store';
 
 export async function POST(request: NextRequest) {
   try {
@@ -20,6 +21,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const timestamp = new Date().toISOString();
+
+    esp32Store.upsertDevice(macAddress, {
+      registered: true,
+      lastSeen: timestamp,
+    });
+
+    esp32Store.addEvent({
+      type: 'register',
+      macAddress,
+      timestamp,
+      data: { cellNumber, hubId },
+    });
+
     // Return success response
     // The frontend will handle actual storage via localStorage
     return NextResponse.json(
@@ -29,6 +44,7 @@ export async function POST(request: NextRequest) {
         macAddress,
         cellNumber,
         hubId,
+        timestamp,
       },
       { status: 201 }
     );

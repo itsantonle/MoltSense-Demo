@@ -66,6 +66,7 @@ export function NavbarNew() {
     { label: 'My Sets', href: '/my-racks', icon: Layers },
     { label: 'Discover', href: '/my-cells', icon: Radar },
     { label: 'Molt History', href: '/molt-history', icon: History },
+    { label: 'Config', href: '/config', icon: Settings },
     { label: 'Analytics', href: '/analytics', icon: LineChart },
   ];
 

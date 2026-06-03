@@ -17,6 +17,7 @@ export interface Cell {
   bioimpedance: number;
   temperature: number;
   humidity: number;
+  esp32Config?: Partial<Esp32Config>;
 }
 
 export interface MoltEvent {
@@ -54,6 +55,7 @@ export interface RackSet {
   name: string;
   rackIds: string[]; // Rack IDs in order
   createdAt: string;
+  esp32Config?: Partial<Esp32Config>;
 }
 
 export interface User {
@@ -80,6 +82,17 @@ export interface Alert {
   read: boolean;
 }
 
+export interface Esp32Config {
+  conductivityThresholdStart: number;
+  conductivityThresholdEnd: number;
+  moistureThresholdLow: number;
+  moistureThresholdHigh: number;
+  moltCooldownMs: number;
+  moistureIntervalMs: number;
+  conductivityIntervalMs: number;
+  errorAfterMs: number;
+}
+
 const STORAGE_KEYS = {
   CELLS: 'moltsense_cells',
   MOLT_EVENTS: 'moltsense_molt_events',
@@ -91,7 +104,131 @@ const STORAGE_KEYS = {
   CURRENT_USER: 'moltsense_current_user',
   WEIGHT_UNIT: 'moltsense_weight_unit',
   TEMP_UNIT: 'moltsense_temp_unit',
+  ESP32_CONFIG: 'moltsense_esp32_config',
+  ESP32_DEVICE_CONFIG: 'moltsense_esp32_device_config',
 };
+
+type LegacyEsp32Config = Partial<Esp32Config> & {
+  conductivityMin?: number;
+  conductivityMax?: number;
+  moistureLow?: number;
+  moistureHigh?: number;
+  conductivityThreshold?: number;
+  moistureThreshold?: number;
+};
+
+const DEFAULT_ESP32_CONFIG: Esp32Config = {
+  conductivityThresholdStart: 1400,
+  conductivityThresholdEnd: 2200,
+  moistureThresholdLow: 45,
+  moistureThresholdHigh: 80,
+  moltCooldownMs: 30 * 60 * 1000,
+  moistureIntervalMs: 5000,
+  conductivityIntervalMs: 300,
+  errorAfterMs: 7 * 24 * 60 * 60 * 1000,
+};
+
+const toFiniteNumber = (value: unknown, fallback: number) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
+
+const normalizeEsp32Config = (config?: LegacyEsp32Config | null): Esp32Config => ({
+  conductivityThresholdStart: toFiniteNumber(
+    config?.conductivityThresholdStart ?? config?.conductivityMin ?? config?.conductivityThreshold,
+    DEFAULT_ESP32_CONFIG.conductivityThresholdStart
+  ),
+  conductivityThresholdEnd: toFiniteNumber(
+    config?.conductivityThresholdEnd ?? config?.conductivityMax ?? config?.conductivityThreshold,
+    DEFAULT_ESP32_CONFIG.conductivityThresholdEnd
+  ),
+  moistureThresholdLow: toFiniteNumber(
+    config?.moistureThresholdLow ?? config?.moistureLow ?? config?.moistureThreshold,
+    DEFAULT_ESP32_CONFIG.moistureThresholdLow
+  ),
+  moistureThresholdHigh: toFiniteNumber(
+    config?.moistureThresholdHigh ?? config?.moistureHigh ?? config?.moistureThreshold,
+    DEFAULT_ESP32_CONFIG.moistureThresholdHigh
+  ),
+  moltCooldownMs: toFiniteNumber(config?.moltCooldownMs, DEFAULT_ESP32_CONFIG.moltCooldownMs),
+  moistureIntervalMs: toFiniteNumber(config?.moistureIntervalMs, DEFAULT_ESP32_CONFIG.moistureIntervalMs),
+  conductivityIntervalMs: toFiniteNumber(
+    config?.conductivityIntervalMs,
+    DEFAULT_ESP32_CONFIG.conductivityIntervalMs
+  ),
+  errorAfterMs: toFiniteNumber(config?.errorAfterMs, DEFAULT_ESP32_CONFIG.errorAfterMs),
+});
+
+const normalizeEsp32ConfigPatch = (config?: LegacyEsp32Config | null): Partial<Esp32Config> => {
+  if (!config) return {};
+
+  const patch: Partial<Esp32Config> = {};
+  if (
+    config.conductivityThresholdStart !== undefined ||
+    config.conductivityMin !== undefined ||
+    config.conductivityThreshold !== undefined
+  ) {
+    patch.conductivityThresholdStart = toFiniteNumber(
+      config.conductivityThresholdStart ?? config.conductivityMin ?? config.conductivityThreshold,
+      DEFAULT_ESP32_CONFIG.conductivityThresholdStart
+    );
+  }
+  if (
+    config.conductivityThresholdEnd !== undefined ||
+    config.conductivityMax !== undefined ||
+    config.conductivityThreshold !== undefined
+  ) {
+    patch.conductivityThresholdEnd = toFiniteNumber(
+      config.conductivityThresholdEnd ?? config.conductivityMax ?? config.conductivityThreshold,
+      DEFAULT_ESP32_CONFIG.conductivityThresholdEnd
+    );
+  }
+  if (
+    config.moistureThresholdLow !== undefined ||
+    config.moistureLow !== undefined ||
+    config.moistureThreshold !== undefined
+  ) {
+    patch.moistureThresholdLow = toFiniteNumber(
+      config.moistureThresholdLow ?? config.moistureLow ?? config.moistureThreshold,
+      DEFAULT_ESP32_CONFIG.moistureThresholdLow
+    );
+  }
+  if (
+    config.moistureThresholdHigh !== undefined ||
+    config.moistureHigh !== undefined ||
+    config.moistureThreshold !== undefined
+  ) {
+    patch.moistureThresholdHigh = toFiniteNumber(
+      config.moistureThresholdHigh ?? config.moistureHigh ?? config.moistureThreshold,
+      DEFAULT_ESP32_CONFIG.moistureThresholdHigh
+    );
+  }
+  if (config.moltCooldownMs !== undefined) {
+    patch.moltCooldownMs = toFiniteNumber(config.moltCooldownMs, DEFAULT_ESP32_CONFIG.moltCooldownMs);
+  }
+  if (config.moistureIntervalMs !== undefined) {
+    patch.moistureIntervalMs = toFiniteNumber(
+      config.moistureIntervalMs,
+      DEFAULT_ESP32_CONFIG.moistureIntervalMs
+    );
+  }
+  if (config.conductivityIntervalMs !== undefined) {
+    patch.conductivityIntervalMs = toFiniteNumber(
+      config.conductivityIntervalMs,
+      DEFAULT_ESP32_CONFIG.conductivityIntervalMs
+    );
+  }
+  if (config.errorAfterMs !== undefined) {
+    patch.errorAfterMs = toFiniteNumber(config.errorAfterMs, DEFAULT_ESP32_CONFIG.errorAfterMs);
+  }
+
+  return patch;
+};
+
+const mergeEsp32Configs = (
+  base: Esp32Config,
+  override?: LegacyEsp32Config | null
+): Esp32Config => normalizeEsp32Config({ ...base, ...(override ?? {}) });
 
 // Initialize default data
 const initializeDefaults = () => {
@@ -236,6 +373,38 @@ export const storageUtils = {
     }
   },
 
+  getSetEsp32Config: (setId: string): Partial<Esp32Config> => {
+    if (typeof window === 'undefined') return {};
+    const set = storageUtils.getSets().find((item) => item.id === setId);
+    return normalizeEsp32ConfigPatch(set?.esp32Config ?? {});
+  },
+
+  setSetEsp32Config: (setId: string, updates: Partial<Esp32Config>) => {
+    if (typeof window === 'undefined') return;
+    const sets = storageUtils.getSets();
+    const index = sets.findIndex((set) => set.id === setId);
+    if (index === -1) return;
+    sets[index] = {
+      ...sets[index],
+      esp32Config: {
+        ...(sets[index].esp32Config ?? {}),
+        ...normalizeEsp32ConfigPatch(updates as LegacyEsp32Config),
+      },
+    };
+    localStorage.setItem(STORAGE_KEYS.SETS, JSON.stringify(sets));
+  },
+
+  clearSetEsp32Config: (setId: string) => {
+    if (typeof window === 'undefined') return;
+    const sets = storageUtils.getSets();
+    const index = sets.findIndex((set) => set.id === setId);
+    if (index === -1) return;
+    const nextSet = { ...sets[index] };
+    delete nextSet.esp32Config;
+    sets[index] = nextSet;
+    localStorage.setItem(STORAGE_KEYS.SETS, JSON.stringify(sets));
+  },
+
   deleteSet: (id: string) => {
     if (typeof window === 'undefined') return;
     const sets = storageUtils.getSets().filter((s) => s.id !== id);
@@ -263,6 +432,38 @@ export const storageUtils = {
       cells[index] = { ...cells[index], ...updates };
       localStorage.setItem(STORAGE_KEYS.CELLS, JSON.stringify(cells));
     }
+  },
+
+  getCellEsp32Config: (cellId: string): Partial<Esp32Config> => {
+    if (typeof window === 'undefined') return {};
+    const cell = storageUtils.getCells().find((item) => item.id === cellId);
+    return normalizeEsp32ConfigPatch(cell?.esp32Config ?? {});
+  },
+
+  setCellEsp32Config: (cellId: string, updates: Partial<Esp32Config>) => {
+    if (typeof window === 'undefined') return;
+    const cells = storageUtils.getCells();
+    const index = cells.findIndex((cell) => cell.id === cellId);
+    if (index === -1) return;
+    cells[index] = {
+      ...cells[index],
+      esp32Config: {
+        ...(cells[index].esp32Config ?? {}),
+        ...normalizeEsp32ConfigPatch(updates as LegacyEsp32Config),
+      },
+    };
+    localStorage.setItem(STORAGE_KEYS.CELLS, JSON.stringify(cells));
+  },
+
+  clearCellEsp32Config: (cellId: string) => {
+    if (typeof window === 'undefined') return;
+    const cells = storageUtils.getCells();
+    const index = cells.findIndex((cell) => cell.id === cellId);
+    if (index === -1) return;
+    const nextCell = { ...cells[index] };
+    delete nextCell.esp32Config;
+    cells[index] = nextCell;
+    localStorage.setItem(STORAGE_KEYS.CELLS, JSON.stringify(cells));
   },
 
   removeCell: (id: string) => {
@@ -537,6 +738,74 @@ export const storageUtils = {
   setTempUnit: (unit: 'c' | 'f') => {
     if (typeof window === 'undefined') return;
     localStorage.setItem(STORAGE_KEYS.TEMP_UNIT, unit);
+  },
+  getEsp32Config: (): Esp32Config => {
+    if (typeof window === 'undefined') {
+      return { ...DEFAULT_ESP32_CONFIG };
+    }
+    const data = localStorage.getItem(STORAGE_KEYS.ESP32_CONFIG);
+    if (data) return normalizeEsp32Config(JSON.parse(data) as LegacyEsp32Config);
+    localStorage.setItem(STORAGE_KEYS.ESP32_CONFIG, JSON.stringify(DEFAULT_ESP32_CONFIG));
+    return { ...DEFAULT_ESP32_CONFIG };
+  },
+  setEsp32Config: (config: Esp32Config) => {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem(STORAGE_KEYS.ESP32_CONFIG, JSON.stringify(normalizeEsp32Config(config)));
+  },
+  resolveEsp32ConfigForCell: (cellId: string): Esp32Config => {
+    if (typeof window === 'undefined') return { ...DEFAULT_ESP32_CONFIG };
+    const cell = storageUtils.getCells().find((item) => item.id === cellId);
+    if (!cell) return storageUtils.getEsp32Config();
+
+    const parentSet = cell.rackId
+      ? storageUtils.getSets().find((item) => item.rackIds.includes(cell.rackId as string))
+      : undefined;
+
+    return mergeEsp32Configs(
+      mergeEsp32Configs(
+        storageUtils.getEsp32Config(),
+        parentSet?.esp32Config as LegacyEsp32Config | undefined
+      ),
+      cell.esp32Config as LegacyEsp32Config | undefined
+    );
+  },
+  getEsp32DeviceConfig: (macAddress: string): Partial<Esp32Config> => {
+    if (typeof window === 'undefined') return {};
+    const data = localStorage.getItem(STORAGE_KEYS.ESP32_DEVICE_CONFIG);
+    if (!data) return {};
+    const map = JSON.parse(data) as Record<string, LegacyEsp32Config>;
+    return normalizeEsp32ConfigPatch(map[macAddress]);
+  },
+  getEsp32DeviceConfigs: (): Record<string, Partial<Esp32Config>> => {
+    if (typeof window === 'undefined') return {};
+    const data = localStorage.getItem(STORAGE_KEYS.ESP32_DEVICE_CONFIG);
+    if (!data) return {};
+    const map = JSON.parse(data) as Record<string, LegacyEsp32Config>;
+    return Object.fromEntries(
+      Object.entries(map).map(([macAddress, config]) => [macAddress, normalizeEsp32ConfigPatch(config)])
+    );
+  },
+  setEsp32DeviceConfig: (macAddress: string, updates: Partial<Esp32Config>) => {
+    if (typeof window === 'undefined') return;
+    const data = localStorage.getItem(STORAGE_KEYS.ESP32_DEVICE_CONFIG);
+    const map = data ? (JSON.parse(data) as Record<string, LegacyEsp32Config>) : {};
+    map[macAddress] = {
+      ...(map[macAddress] ?? {}),
+      ...normalizeEsp32ConfigPatch(updates as LegacyEsp32Config),
+    };
+    localStorage.setItem(STORAGE_KEYS.ESP32_DEVICE_CONFIG, JSON.stringify(map));
+  },
+  clearEsp32DeviceConfig: (macAddress: string) => {
+    if (typeof window === 'undefined') return;
+    const data = localStorage.getItem(STORAGE_KEYS.ESP32_DEVICE_CONFIG);
+    if (!data) return;
+    const map = JSON.parse(data) as Record<string, LegacyEsp32Config>;
+    delete map[macAddress];
+    localStorage.setItem(STORAGE_KEYS.ESP32_DEVICE_CONFIG, JSON.stringify(map));
+  },
+  clearAllEsp32DeviceConfigs: () => {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem(STORAGE_KEYS.ESP32_DEVICE_CONFIG, JSON.stringify({}));
   },
 };
 

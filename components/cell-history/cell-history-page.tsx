@@ -4,8 +4,9 @@ import { useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Calendar, Clock, TrendingUp } from 'lucide-react';
+import { ArrowLeft, Calendar, Clock, Settings2, TrendingUp } from 'lucide-react';
 import { useMoltSense } from '@/lib/hooks/useMoltSense';
+import { acknowledgeMolt } from '@/lib/esp32';
 
 const formatHour = (date: Date) =>
   date.toLocaleTimeString([], { hour: 'numeric', hour12: true });
@@ -13,7 +14,7 @@ const formatHour = (date: Date) =>
 export function CellHistoryPage() {
   const params = useParams();
   const cellId = Array.isArray(params?.id) ? params?.id[0] : params?.id;
-  const { cells, moltEvents, isLoading } = useMoltSense();
+  const { cells, moltEvents, acknowledgeMoltEvent, isLoading } = useMoltSense();
 
   const cell = useMemo(
     () => cells.find((item) => item.id === cellId),
@@ -100,10 +101,19 @@ export function CellHistoryPage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-        <Link href="/my-racks" className="text-cyan-300 flex items-center gap-2">
-          <ArrowLeft className="w-4 h-4" />
-          Back to My Sets
-        </Link>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <Link href="/my-racks" className="text-cyan-300 flex items-center gap-2">
+            <ArrowLeft className="w-4 h-4" />
+            Back to My Sets
+          </Link>
+          <Link
+            href={`/cell/${cell.id}/config`}
+            className="inline-flex items-center gap-2 px-3 py-2 rounded bg-cyan-500/20 text-cyan-200 border border-cyan-500/40 text-sm"
+          >
+            <Settings2 className="w-4 h-4" />
+            Configure Cell
+          </Link>
+        </div>
 
         <motion.div
           initial={{ opacity: 0, y: 10 }}
@@ -163,9 +173,22 @@ export function CellHistoryPage() {
                     </p>
                     <p className="text-xs text-slate-400">Duration: {event.duration}h</p>
                   </div>
-                  <span className={`text-xs font-semibold ${event.acknowledged ? 'text-green-400' : 'text-yellow-300'}`}>
-                    {event.acknowledged ? 'Acknowledged' : 'Pending'}
-                  </span>
+                  <div className="flex items-center gap-3">
+                    <span className={`text-xs font-semibold ${event.acknowledged ? 'text-green-400' : 'text-yellow-300'}`}>
+                      {event.acknowledged ? 'Acknowledged' : 'Pending'}
+                    </span>
+                    {!event.acknowledged && cell && (
+                      <button
+                        onClick={async () => {
+                          acknowledgeMoltEvent(event.id);
+                          await acknowledgeMolt(cell.macAddress, event.id);
+                        }}
+                        className="text-xs px-2 py-1 rounded bg-cyan-500/20 text-cyan-200 border border-cyan-500/40"
+                      >
+                        Acknowledge
+                      </button>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>

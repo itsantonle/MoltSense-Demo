@@ -74,6 +74,7 @@ export function CellCard({
     .filter((event) => event.cellId === cell.id)
     .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
   const lastMoltTime = cellEvents[0]?.timestamp || cell.lastMolt;
+  const needsCheck = Boolean(lastMoltTime) && cell.ledStatus === 'on';
   const avgIntervalDays = (() => {
     if (cellEvents.length < 2) return null;
     const intervals = cellEvents
@@ -148,6 +149,11 @@ export function CellCard({
               >
                 {cell.status}
               </span>
+              {needsCheck && (
+                <span className="px-2 py-1 rounded text-[10px] font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                  NOT CHECKED YET
+                </span>
+              )}
             </div>
           </div>
 

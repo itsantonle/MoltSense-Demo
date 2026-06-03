@@ -23,6 +23,7 @@ export function Navbar({ unreadAlerts = 0 }: NavbarProps) {
     { label: 'Alerts', href: '/alerts' },
     { label: 'Undiscovered', href: '/undiscovered' },
     { label: 'Molt History', href: '/molt-history' },
+    { label: 'Config', href: '/config' },
     { label: 'Analytics', href: '/analytics' },
     { label: 'Hubs', href: '/hubs' },
   ];

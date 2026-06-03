@@ -45,9 +45,11 @@ Key goals:
  - `My Sets` (formerly "My Racks"): farm-oriented layout with drag-and-drop reordering of racks within a set and cells within a rack.
  - Editable rack capacity: racks use a sensible default but can be edited; capacities are normalized so they never fall below the number of currently assigned cells.
  - Unit controls: persistent weight (`g` / `kg` / `lb`) and temperature (`C` / `F`) toggles stored in `localStorage`.
- - LED control: toggle cell LED from the dashboard UI.
- - Per-cell history: `/cell/[id]/history` pages provide detailed event timelines and sensor history.
- - Farm-wide molt history table: searchable, sortable, and responsive (rows stack on small screens for readability).
+- LED control: toggle cell LED from the dashboard UI.
+- Config control panel: farm-wide and per-device ESP32 thresholds, plus molt acknowledgement actions.
+- Per-cell history: `/cell/[id]/history` pages provide detailed event timelines and sensor history.
+- Per-cell config: `/cell/[id]/config` stores individual overrides directly on the cell record.
+- Farm-wide molt history table: searchable, sortable, and responsive (rows stack on small screens for readability).
  - Analytics: KPI cards, frequency summaries, and CSV export for reports.
  - UX & safety improvements: inline form validation, custom confirm dialogs for destructive actions, improved select/dropdown contrast and keyboard focus styling, and mobile navigation adjustments (centered bottom nav with horizontal scroll and reduced icon/text on very small screens).
 
@@ -96,12 +98,19 @@ public/
 - /my-racks (My Sets)
 - /my-cells (Discover)
 - /molt-history
+- /config
+- /cell/[id]/config
 - /analytics
 - /cell/[id]/history
 
 ## Data Notes
 
 This demo uses localStorage for persistence. It is structured so a real backend can replace the storage layer later.
+Config hierarchy:
+
+- Global settings act as the baseline for all connected cells.
+- Set-level overrides apply to every cell in that set unless a cell has its own override.
+- Individual cell overrides are stored on the cell record itself and only affect that one cell.
 
 ## Getting Started
 

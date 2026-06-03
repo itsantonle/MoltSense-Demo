@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   storageUtils,
   Cell,
@@ -21,6 +21,7 @@ export const useMoltSense = () => {
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [sets, setSets] = useState<RackSet[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const lastEventIdRef = useRef(0);
 
   // Initial load
   useEffect(() => {
@@ -38,6 +39,130 @@ export const useMoltSense = () => {
 
     // Set up polling for simulated ESP32 data
     const interval = setInterval(loadData, 2000);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    const syncEsp32Events = async () => {
+      try {
+        const response = await fetch(`/api/esp32/events?since=${lastEventIdRef.current}`);
+        if (!response.ok) return;
+        const payload = await response.json();
+        const events = payload?.events ?? [];
+        if (!Array.isArray(events) || events.length === 0) return;
+
+        const now = new Date().toISOString();
+        const existingEvents = storageUtils.getMoltEvents();
+        const existingEventIds = new Set(existingEvents.map((event) => event.id));
+        const nextAlerts = storageUtils.getAlerts();
+
+        events.forEach((event: { id: number; type: string; macAddress: string; timestamp: string; data?: Record<string, unknown> }) => {
+          lastEventIdRef.current = Math.max(lastEventIdRef.current, event.id);
+          const cellsSnapshot = storageUtils.getCells();
+          const cell = cellsSnapshot.find((item) => item.macAddress === event.macAddress);
+          const timestamp = event.timestamp || now;
+
+          if (!cell) {
+            const existing = storageUtils.getUndiscoveredDevices().find((device) => device.macAddress === event.macAddress);
+            storageUtils.addUndiscoveredDevice({
+              macAddress: event.macAddress,
+              firstSeen: existing?.firstSeen ?? timestamp,
+              lastSeen: timestamp,
+              signalStrength: Number(event.data?.signalStrength ?? 80),
+            });
+            setUndiscoveredDevices(storageUtils.getUndiscoveredDevices());
+            return;
+          }
+
+          if (event.type === 'register') {
+            const existing = storageUtils.getUndiscoveredDevices().find((device) => device.macAddress === event.macAddress);
+            storageUtils.addUndiscoveredDevice({
+              macAddress: event.macAddress,
+              firstSeen: existing?.firstSeen ?? timestamp,
+              lastSeen: timestamp,
+              signalStrength: Number(event.data?.signalStrength ?? 80),
+            });
+            setUndiscoveredDevices(storageUtils.getUndiscoveredDevices());
+          }
+
+          if (event.type === 'telemetry') {
+            storageUtils.updateCell(cell.id, {
+              pressure: Number(event.data?.pressure ?? cell.pressure),
+              moisture: Number(event.data?.moisture ?? cell.moisture),
+              bioimpedance: Number(event.data?.conductivity ?? cell.bioimpedance),
+              temperature: Number(event.data?.temperature ?? cell.temperature),
+              humidity: Number(event.data?.humidity ?? cell.humidity),
+              ledStatus: (event.data?.ledStatus as Cell['ledStatus']) ?? cell.ledStatus,
+            });
+          }
+
+          if (event.type === 'molt') {
+            const moltEventId = String(event.data?.moltEventId ?? `molt-${event.id}`);
+            if (!existingEventIds.has(moltEventId)) {
+              const newEvent: MoltEvent = {
+                id: moltEventId,
+                cellId: cell.id,
+                timestamp,
+                duration: 4.5,
+                acknowledged: false,
+              };
+              storageUtils.addMoltEvent(newEvent);
+              existingEventIds.add(moltEventId);
+
+              const alert: Alert = {
+                id: `alert-${Date.now()}-${cell.id}`,
+                cellId: cell.id,
+                type: 'molt',
+                message: 'Molt detected in cell',
+                timestamp,
+                read: false,
+              };
+              nextAlerts.push(alert);
+              storageUtils.addAlert(alert);
+            }
+            storageUtils.updateCell(cell.id, {
+              lastMolt: timestamp,
+              ledStatus: 'on',
+              status: 'active',
+            });
+          }
+
+          if (event.type === 'error') {
+            storageUtils.updateCell(cell.id, {
+              status: 'error',
+              ledStatus: 'blinking',
+            });
+
+            const alert: Alert = {
+              id: `alert-${Date.now()}-${cell.id}`,
+              cellId: cell.id,
+              type: 'sensor_error',
+              message: String(event.data?.message ?? 'Sensor error detected'),
+              timestamp,
+              read: false,
+            };
+            nextAlerts.push(alert);
+            storageUtils.addAlert(alert);
+          }
+
+          if (event.type === 'ack') {
+            const moltEventId = String(event.data?.moltEventId ?? '');
+            if (moltEventId) {
+              storageUtils.acknowledgeMoltEvent(moltEventId);
+            }
+            storageUtils.updateCell(cell.id, { ledStatus: 'off' });
+          }
+        });
+
+        setCells(storageUtils.getCells());
+        setMoltEvents(storageUtils.getMoltEvents());
+        setAlerts(storageUtils.getAlerts());
+      } catch (error) {
+        console.warn('Failed to sync ESP32 events', error);
+      }
+    };
+
+    const interval = setInterval(syncEsp32Events, 3000);
     return () => clearInterval(interval);
   }, []);
 

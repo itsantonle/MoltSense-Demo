@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { esp32Store } from '@/app/api/esp32/store';
 
 export async function POST(request: NextRequest) {
   try {
@@ -11,6 +12,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const timestamp = new Date().toISOString();
+
+    esp32Store.upsertDevice(macAddress, {
+      ledStatus: 'off',
+      lastSeen: timestamp,
+    });
+
+    esp32Store.addEvent({
+      type: 'ack',
+      macAddress,
+      timestamp,
+      data: { moltEventId },
+    });
+
     // Return acknowledgement
     // Frontend will update the molt event status
     return NextResponse.json(
@@ -18,7 +33,7 @@ export async function POST(request: NextRequest) {
         success: true,
         message: 'Molt event acknowledged',
         moltEventId,
-        acknowledgedAt: new Date().toISOString(),
+        acknowledgedAt: timestamp,
       },
       { status: 200 }
     );

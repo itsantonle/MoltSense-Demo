@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/dialog';
 import Link from 'next/link';
 import { ConfirmDialog } from '@/components/shared/confirm-dialog';
+import { sendLedCommand } from '@/lib/esp32';
 
 const moveItem = <T,>(items: T[], fromIndex: number, toIndex: number): T[] => {
   const next = [...items];
@@ -615,6 +616,11 @@ export function MyRacksPage() {
                                               : 'bg-gray-400'
                                           }`}
                                         />
+                                        {lastMolt && cell.ledStatus === 'on' && (
+                                          <span className="text-[10px] font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/40 px-1.5 py-0.5 rounded">
+                                            NOT CHECKED YET
+                                          </span>
+                                        )}
                                         <span className={`text-xs font-bold ${
                                           cell.status === 'error' ? 'text-red-400' : 'text-green-400'
                                         }`}>
@@ -680,6 +686,7 @@ export function MyRacksPage() {
                   <button
                     onClick={() => {
                       const next = selectedCell.ledStatus === 'on' ? 'off' : 'on';
+                      sendLedCommand(selectedCell.macAddress, next);
                       storageUtils.updateCell(selectedCell.id, { ledStatus: next });
                       refreshData();
                     }}
