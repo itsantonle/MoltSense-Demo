@@ -27,6 +27,15 @@ export async function POST(request: NextRequest) {
     }
 
     const registeredDevice = esp32Store.getDevice(macAddress);
+    if (!registeredDevice?.registered) {
+      return NextResponse.json(
+        {
+          error: 'Device must be added before telemetry is accepted',
+          code: 'DEVICE_NOT_REGISTERED',
+        },
+        { status: 403 }
+      );
+    }
 
     const timestamp = new Date().toISOString();
     const config = esp32Store.resolveConfig(macAddress);
@@ -63,13 +72,12 @@ export async function POST(request: NextRequest) {
     });
 
     let device = esp32Store.upsertDevice(macAddress, {
-      registered: registeredDevice?.registered ?? true,
       lastSeen: timestamp,
       signalStrength,
       lastConductivity: hasConductivity
         ? numericConductivity
         : previousDevice?.lastConductivity,
-      ledStatus: ledStatus || previousDevice?.ledStatus || 'off',
+      ledStatus: ledStatus || previousDevice?.ledStatus,
     })
 
     let telemetryEventId: number | undefined;
@@ -86,7 +94,7 @@ export async function POST(request: NextRequest) {
           temperature: Number.isFinite(temperature) ? temperature : mockTemperature(),
           humidity: Number.isFinite(humidity) ? humidity : mockHumidity(),
           signalStrength,
-          ledStatus: inferredMolt ? 'on' : device.ledStatus || 'off',
+          ledStatus: inferredMolt ? 'off' : device.ledStatus,
           moltDetected: inferredMolt,
           moltEventId: inferredMoltEventId,
         },
@@ -100,7 +108,6 @@ export async function POST(request: NextRequest) {
     if (inferredMolt) {
       moltEventId = inferredMoltEventId;
       device = esp32Store.upsertDevice(macAddress, {
-        registered: true,
         ledStatus: 'on',
         lastMoltAt: timestamp,
       });
@@ -121,7 +128,6 @@ export async function POST(request: NextRequest) {
 
     if (errorDetected) {
       esp32Store.upsertDevice(macAddress, {
-        registered: true,
         ledStatus: 'blinking',
         errorState: true,
       });
