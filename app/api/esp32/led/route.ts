@@ -6,7 +6,12 @@ export async function GET(request: NextRequest) {
   const macAddress = searchParams.get('macAddress');
 
   if (!macAddress) {
-    return NextResponse.json({ error: 'Missing macAddress' }, { status: 400 });
+    return NextResponse.json({
+      success: true,
+      endpoint: '/api/esp32/led',
+      message: 'macAddress query parameter is required to read a device LED state',
+      ledStatus: 'off',
+    });
   }
 
   const device = esp32Store.getDevice(macAddress);
