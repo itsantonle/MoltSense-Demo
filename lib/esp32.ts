@@ -15,16 +15,6 @@ export const sendLedCommand = async (
   }
 };
 
-export const unregisterEsp32Device = async (macAddress: string) => {
-  try {
-    await fetch(`/api/esp32/register?macAddress=${encodeURIComponent(macAddress)}`, {
-      method: 'DELETE',
-    });
-  } catch (error) {
-    console.warn('Failed to unregister ESP32 device', error);
-  }
-};
-
 export const acknowledgeMolt = async (macAddress: string, moltEventId: string) => {
   try {
     await fetch('/api/molt/acknowledge', {

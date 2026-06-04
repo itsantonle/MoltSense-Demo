@@ -26,20 +26,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const registeredDevice = esp32Store.getDevice(macAddress);
-    if (!registeredDevice?.registered) {
-      return NextResponse.json(
-        {
-          error: 'Device must be added before telemetry is accepted',
-          code: 'DEVICE_NOT_REGISTERED',
-        },
-        { status: 403 }
-      );
-    }
-
     const timestamp = new Date().toISOString();
     const config = esp32Store.resolveConfig(macAddress);
-    const previousDevice = registeredDevice;
+    const previousDevice = esp32Store.getDevice(macAddress);
     const numericConductivity = Number(conductivity);
     const hasConductivity = Number.isFinite(numericConductivity);
     const telemetryIntervalMs = Math.max(config.moistureIntervalMs || 0, 1000);
