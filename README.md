@@ -11,9 +11,11 @@ MoltSense is a smart molt detection system for soft-shell crab farms. The platfo
 ## Product Diagrams
 
 ### PCB + 3D-Printed Shell (compact)
+
 ![PCB + 3D-Printed Shell](public/docs/pcb.png)
 
 ### Product V1 - Breadboard Build
+
 ![Product V1](public/docs/v1.png)
 
 Both builds use the same core components; the PCB variant is the final compact target.
@@ -39,19 +41,19 @@ Key goals:
 - per-cell history page at /cell/[id]/history
 - farm-wide molt history table with set/rack context
 - analytics report preview + CSV export
- - analytics report preview + CSV export
- - ESP32 registration: discovery flow auto-assigns the next sequential cell number when a device is added (no manual numbering required).
- - Visualized Grid: bird's-eye mapping of sets, racks, and cells with direct links to cells; empty racks show a clear "No cells assigned" placeholder and an "Add Cell" CTA that opens the discovery flow.
- - `My Sets` (formerly "My Racks"): farm-oriented layout with drag-and-drop reordering of racks within a set and cells within a rack.
- - Editable rack capacity: racks use a sensible default but can be edited; capacities are normalized so they never fall below the number of currently assigned cells.
- - Unit controls: persistent weight (`g` / `kg` / `lb`) and temperature (`C` / `F`) toggles stored in `localStorage`.
+- analytics report preview + CSV export
+- ESP32 registration: discovery flow auto-assigns the next sequential cell number when a device is added (no manual numbering required).
+- Visualized Grid: bird's-eye mapping of sets, racks, and cells with direct links to cells; empty racks show a clear "No cells assigned" placeholder and an "Add Cell" CTA that opens the discovery flow.
+- `My Sets` (formerly "My Racks"): farm-oriented layout with drag-and-drop reordering of racks within a set and cells within a rack.
+- Editable rack capacity: racks use a sensible default but can be edited; capacities are normalized so they never fall below the number of currently assigned cells.
+- Unit controls: persistent weight (`g` / `kg` / `lb`) and temperature (`C` / `F`) toggles stored in `localStorage`.
 - LED control: toggle cell LED from the dashboard UI.
 - Config control panel: farm-wide and per-device ESP32 thresholds, plus molt acknowledgement actions.
 - Per-cell history: `/cell/[id]/history` pages provide detailed event timelines and sensor history.
 - Per-cell config: `/cell/[id]/config` stores individual overrides directly on the cell record.
 - Farm-wide molt history table: searchable, sortable, and responsive (rows stack on small screens for readability).
- - Analytics: KPI cards, frequency summaries, and CSV export for reports.
- - UX & safety improvements: inline form validation, custom confirm dialogs for destructive actions, improved select/dropdown contrast and keyboard focus styling, and mobile navigation adjustments (centered bottom nav with horizontal scroll and reduced icon/text on very small screens).
+- Analytics: KPI cards, frequency summaries, and CSV export for reports.
+- UX & safety improvements: inline form validation, custom confirm dialogs for destructive actions, improved select/dropdown contrast and keyboard focus styling, and mobile navigation adjustments (centered bottom nav with horizontal scroll and reduced icon/text on very small screens).
 
 These features are implemented as client-side behavior backed by the demo `localStorage` layer to make it easy to prototype before integrating a backend.
 
