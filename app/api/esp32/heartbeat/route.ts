@@ -63,12 +63,11 @@ export async function POST(request: NextRequest) {
     let device = esp32Store.upsertDevice(macAddress, {
       lastSeen: timestamp,
       signalStrength,
-      lastConductivity: hasConductivity ? numericConductivity : previousDevice?.lastConductivity,
-      ledStatus:
-        ledStatus === 'on' || ledStatus === 'off' || ledStatus === 'blinking'
-          ? ledStatus
-          : previousDevice?.ledStatus,
-    });
+      lastConductivity: hasConductivity
+        ? numericConductivity
+        : previousDevice?.lastConductivity,
+      ledStatus: ledStatus || previousDevice?.ledStatus,
+    })
 
     let telemetryEventId: number | undefined;
     let moltEventId: string | undefined;
