@@ -160,7 +160,7 @@ export const useMoltSense = () => {
           if (event.type === 'error') {
             storageUtils.updateCell(cell.id, {
               status: 'error',
-              ledStatus: cell.ledStatus,
+              ledStatus: 'blinking',
             });
 
             const alert: Alert = {

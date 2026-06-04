@@ -611,7 +611,11 @@ export function MyRacksPage() {
                                       <div className="flex items-center gap-2 flex-shrink-0">
                                         <div
                                           className={`w-2 h-2 rounded-full ${
-                                            cell.ledStatus === 'on' ? 'bg-green-400' : 'bg-gray-400'
+                                            cell.ledStatus === 'on'
+                                              ? 'bg-green-400'
+                                              : cell.ledStatus === 'blinking'
+                                              ? 'bg-yellow-400'
+                                              : 'bg-gray-400'
                                           }`}
                                         />
                                         {lastMolt && cell.ledStatus === 'on' && (

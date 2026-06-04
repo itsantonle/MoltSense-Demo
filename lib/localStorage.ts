@@ -11,7 +11,7 @@ export interface Cell {
   status: 'active' | 'inactive' | 'error';
   lastMolt?: string;
   nextMoltEstimate?: string;
-  ledStatus: 'on' | 'off';
+  ledStatus: 'on' | 'off' | 'blinking';
   pressure: number;
   moisture: number;
   bioimpedance: number;

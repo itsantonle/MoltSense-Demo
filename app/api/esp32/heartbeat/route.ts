@@ -69,13 +69,8 @@ export async function POST(request: NextRequest) {
       lastConductivity: hasConductivity
         ? numericConductivity
         : previousDevice?.lastConductivity,
-      ledStatus:
-        inferredMolt
-          ? 'on'
-          : ledStatus === 'off' && previousDevice?.lastMoltAt
-            ? 'on'
-            : ledStatus ?? previousDevice?.ledStatus ?? 'off',
-    });
+     ledStatus: ledStatus ?? previousDevice?.ledStatus,
+    })
 
     let telemetryEventId: number | undefined;
     let moltEventId: string | undefined;
@@ -91,7 +86,7 @@ export async function POST(request: NextRequest) {
           temperature: Number.isFinite(temperature) ? temperature : mockTemperature(),
           humidity: Number.isFinite(humidity) ? humidity : mockHumidity(),
           signalStrength,
-          ledStatus: device.ledStatus || 'off',
+          ledStatus: inferredMolt ? 'on' : device.ledStatus || 'off',
           moltDetected: inferredMolt,
           moltEventId: inferredMoltEventId,
         },
@@ -127,6 +122,7 @@ export async function POST(request: NextRequest) {
     if (errorDetected) {
       esp32Store.upsertDevice(macAddress, {
         registered: true,
+        ledStatus: 'blinking',
         errorState: true,
       });
       esp32Store.addEvent({

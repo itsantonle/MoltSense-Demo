@@ -77,7 +77,11 @@ export function RackCard({ rack, cells }: RackCardProps) {
               <div className="flex items-center gap-1 flex-shrink-0">
                 <div
                   className={`w-2 h-2 rounded-full ${
-                    cell.ledStatus === 'on' ? 'bg-green-400' : 'bg-gray-400'
+                    cell.ledStatus === 'on'
+                      ? 'bg-green-400'
+                      : cell.ledStatus === 'blinking'
+                      ? 'bg-yellow-400'
+                      : 'bg-gray-400'
                   }`}
                 />
                 <span className="text-xs text-slate-400">
