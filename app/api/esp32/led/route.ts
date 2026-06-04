@@ -10,7 +10,8 @@ export async function GET(request: NextRequest) {
   }
 
   const device = esp32Store.getDevice(macAddress);
-  const ledStatus = device?.ledStatus ?? (device?.lastMoltAt ? 'on' : 'off');
+const ledStatus = device?.ledStatus
+
 
   return NextResponse.json({
     success: true,
