@@ -42,8 +42,7 @@ export async function POST(request: NextRequest) {
       (moltDetected ||
         ((previousDevice?.lastConductivity === undefined ||
           previousDevice.lastConductivity < config.conductivityThresholdStart) &&
-          numericConductivity >= config.conductivityThresholdStart &&
-          numericConductivity <= config.conductivityThresholdEnd));
+          numericConductivity >= config.conductivityThresholdStart));
 
     console.log('[esp32/heartbeat] received', {
       macAddress,
