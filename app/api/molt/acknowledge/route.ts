@@ -16,6 +16,7 @@ export async function POST(request: NextRequest) {
 
     esp32Store.upsertDevice(macAddress, {
       ledStatus: 'off',
+      lastMoltAt: undefined,
       lastSeen: timestamp,
     });
 
