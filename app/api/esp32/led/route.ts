@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
 
   const device = esp32Store.getDevice(macAddress);
   esp32Store.upsertDevice(macAddress, {
-    registered: device?.registered ?? false,
+    registered: device?.registered ?? true,
     lastSeen: new Date().toISOString(),
     ledStatus: device?.ledStatus ?? 'off',
   });
@@ -34,9 +34,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid ledStatus' }, { status: 400 });
     }
 
-    const device = esp32Store.getDevice(macAddress);
     esp32Store.upsertDevice(macAddress, {
-      registered: device?.registered ?? false,
+      registered: true,
       ledStatus,
       lastSeen: new Date().toISOString(),
     });
