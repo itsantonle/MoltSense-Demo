@@ -94,7 +94,7 @@ export async function POST(request: NextRequest) {
           temperature: Number.isFinite(temperature) ? temperature : mockTemperature(),
           humidity: Number.isFinite(humidity) ? humidity : mockHumidity(),
           signalStrength,
-          ledStatus: inferredMolt ? 'on' : device.ledStatus,
+          ledStatus: inferredMolt ? 'off' : device.ledStatus,
           moltDetected: inferredMolt,
           moltEventId: inferredMoltEventId,
         },
