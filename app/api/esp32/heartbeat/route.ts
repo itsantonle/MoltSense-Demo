@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
       previousConductivity === undefined ||
       previousConductivity < config.conductivityThresholdStart;
     const conductivityAboveTrigger =
-      hasConductivity && numericConductivity >= config.conductivityThresholdEnd;
+      hasConductivity && numericConductivity >= config.conductivityThresholdStart;
     const inferredMolt =
       hasConductivity &&
       moltCooldownElapsed &&
