@@ -10,15 +10,11 @@ export async function GET(request: NextRequest) {
   }
 
   const device = esp32Store.getDevice(macAddress);
-  if (!device?.registered) {
-    return NextResponse.json(
-      {
-        error: 'Device must be added before LED control is accepted',
-        code: 'DEVICE_NOT_REGISTERED',
-      },
-      { status: 403 }
-    );
-  }
+  esp32Store.upsertDevice(macAddress, {
+    registered: device?.registered ?? true,
+    lastSeen: new Date().toISOString(),
+    ledStatus: device?.ledStatus ?? 'off',
+  });
   return NextResponse.json({
     success: true,
     macAddress,
@@ -38,18 +34,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid ledStatus' }, { status: 400 });
     }
 
-    const device = esp32Store.getDevice(macAddress);
-    if (!device?.registered) {
-      return NextResponse.json(
-        {
-          error: 'Device must be added before LED control is accepted',
-          code: 'DEVICE_NOT_REGISTERED',
-        },
-        { status: 403 }
-      );
-    }
-
     esp32Store.upsertDevice(macAddress, {
+      registered: true,
       ledStatus,
       lastSeen: new Date().toISOString(),
     });
