@@ -56,30 +56,6 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function DELETE(request: NextRequest) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const macAddress = searchParams.get('macAddress');
-
-    if (!macAddress) {
-      return NextResponse.json({ error: 'Missing macAddress' }, { status: 400 });
-    }
-
-    esp32Store.removeDevice(macAddress);
-
-    return NextResponse.json({
-      success: true,
-      macAddress,
-      message: 'Device unregistered successfully',
-    });
-  } catch (error) {
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
-  }
-}
-
 // Allow ESP32 to check if registration endpoint is available
 export async function GET() {
   return NextResponse.json({

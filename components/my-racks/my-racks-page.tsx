@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/dialog';
 import Link from 'next/link';
 import { ConfirmDialog } from '@/components/shared/confirm-dialog';
-import { sendLedCommand, unregisterEsp32Device } from '@/lib/esp32';
+import { sendLedCommand } from '@/lib/esp32';
 
 const moveItem = <T,>(items: T[], fromIndex: number, toIndex: number): T[] => {
   const next = [...items];
@@ -231,13 +231,11 @@ export function MyRacksPage() {
     setConfirmState({
       open: true,
       title: 'Remove cell?',
-      description:
-        'This will delete the cell locally, clear its history and alerts, unregister the device so it can be rediscovered later, and reindex remaining cells.',
+      description: 'This will remove the cell and reindex remaining cell numbers.',
       onConfirm: () => {
         if (selectedCell.rackId) {
           storageUtils.removeCellFromRack(selectedCell.rackId, selectedCell.id);
         }
-        void unregisterEsp32Device(selectedCell.macAddress);
         storageUtils.removeCell(selectedCell.id);
         refreshData();
         setCellDialogOpen(false);
