@@ -11,6 +11,8 @@ import {
   RackSet,
 } from '@/lib/localStorage';
 
+const normalizeMacAddress = (value: string) => value.trim().toLowerCase();
+
 export const useMoltSense = () => {
   const [cells, setCells] = useState<Cell[]>([]);
   const [moltEvents, setMoltEvents] = useState<MoltEvent[]>([]);
@@ -22,6 +24,7 @@ export const useMoltSense = () => {
   const [sets, setSets] = useState<RackSet[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const lastEventIdRef = useRef(0);
+  const reflectionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Initial load
   useEffect(() => {
@@ -45,7 +48,9 @@ export const useMoltSense = () => {
   useEffect(() => {
     const syncEsp32Events = async () => {
       try {
-        const response = await fetch(`/api/esp32/events?since=${lastEventIdRef.current}`);
+        const response = await fetch(`/api/esp32/events?since=${lastEventIdRef.current}`, {
+          cache: 'no-store',
+        });
         if (!response.ok) return;
         const payload = await response.json();
         const events = payload?.events ?? [];
@@ -59,11 +64,14 @@ export const useMoltSense = () => {
         events.forEach((event: { id: number; type: string; macAddress: string; timestamp: string; data?: Record<string, unknown> }) => {
           lastEventIdRef.current = Math.max(lastEventIdRef.current, event.id);
           const cellsSnapshot = storageUtils.getCells();
-          const cell = cellsSnapshot.find((item) => item.macAddress === event.macAddress);
+          const eventMac = normalizeMacAddress(event.macAddress);
+          const cell = cellsSnapshot.find((item) => normalizeMacAddress(item.macAddress) === eventMac);
           const timestamp = event.timestamp || now;
 
           if (!cell) {
-            const existing = storageUtils.getUndiscoveredDevices().find((device) => device.macAddress === event.macAddress);
+            const existing = storageUtils.getUndiscoveredDevices().find(
+              (device) => normalizeMacAddress(device.macAddress) === eventMac
+            );
             storageUtils.addUndiscoveredDevice({
               macAddress: event.macAddress,
               firstSeen: existing?.firstSeen ?? timestamp,
@@ -75,7 +83,9 @@ export const useMoltSense = () => {
           }
 
           if (event.type === 'register') {
-            const existing = storageUtils.getUndiscoveredDevices().find((device) => device.macAddress === event.macAddress);
+            const existing = storageUtils.getUndiscoveredDevices().find(
+              (device) => normalizeMacAddress(device.macAddress) === eventMac
+            );
             storageUtils.addUndiscoveredDevice({
               macAddress: event.macAddress,
               firstSeen: existing?.firstSeen ?? timestamp,
@@ -154,16 +164,29 @@ export const useMoltSense = () => {
           }
         });
 
-        setCells(storageUtils.getCells());
-        setMoltEvents(storageUtils.getMoltEvents());
-        setAlerts(storageUtils.getAlerts());
+        if (reflectionTimerRef.current) {
+          clearTimeout(reflectionTimerRef.current);
+        }
+
+        reflectionTimerRef.current = setTimeout(() => {
+          setCells(storageUtils.getCells());
+          setMoltEvents(storageUtils.getMoltEvents());
+          setAlerts(storageUtils.getAlerts());
+          setUndiscoveredDevices(storageUtils.getUndiscoveredDevices());
+        }, 250);
       } catch (error) {
         console.warn('Failed to sync ESP32 events', error);
       }
     };
 
+    syncEsp32Events();
     const interval = setInterval(syncEsp32Events, 3000);
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      if (reflectionTimerRef.current) {
+        clearTimeout(reflectionTimerRef.current);
+      }
+    };
   }, []);
 
   const addCell = useCallback(

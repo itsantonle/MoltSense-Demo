@@ -123,10 +123,12 @@ const DEFAULT_ESP32_CONFIG: Esp32Config = {
   moistureThresholdLow: 45,
   moistureThresholdHigh: 80,
   moltCooldownMs: 30 * 60 * 1000,
-  moistureIntervalMs: 5000,
+  moistureIntervalMs: 60000,
   conductivityIntervalMs: 300,
   errorAfterMs: 7 * 24 * 60 * 60 * 1000,
 };
+
+const MIN_HEARTBEAT_INTERVAL_MS = 60000;
 
 const toFiniteNumber = (value: unknown, fallback: number) => {
   const parsed = Number(value);
@@ -153,7 +155,10 @@ const normalizeEsp32Config = (config?: LegacyEsp32Config | null): Esp32Config =>
     DEFAULT_ESP32_CONFIG.moistureThresholdHigh
   ),
   moltCooldownMs: toFiniteNumber(config?.moltCooldownMs, DEFAULT_ESP32_CONFIG.moltCooldownMs),
-  moistureIntervalMs: toFiniteNumber(config?.moistureIntervalMs, DEFAULT_ESP32_CONFIG.moistureIntervalMs),
+  moistureIntervalMs: Math.max(
+    toFiniteNumber(config?.moistureIntervalMs, DEFAULT_ESP32_CONFIG.moistureIntervalMs),
+    MIN_HEARTBEAT_INTERVAL_MS
+  ),
   conductivityIntervalMs: toFiniteNumber(
     config?.conductivityIntervalMs,
     DEFAULT_ESP32_CONFIG.conductivityIntervalMs
@@ -209,9 +214,9 @@ const normalizeEsp32ConfigPatch = (config?: LegacyEsp32Config | null): Partial<E
     patch.moltCooldownMs = toFiniteNumber(config.moltCooldownMs, DEFAULT_ESP32_CONFIG.moltCooldownMs);
   }
   if (config.moistureIntervalMs !== undefined) {
-    patch.moistureIntervalMs = toFiniteNumber(
-      config.moistureIntervalMs,
-      DEFAULT_ESP32_CONFIG.moistureIntervalMs
+    patch.moistureIntervalMs = Math.max(
+      toFiniteNumber(config.moistureIntervalMs, DEFAULT_ESP32_CONFIG.moistureIntervalMs),
+      MIN_HEARTBEAT_INTERVAL_MS
     );
   }
   if (config.conductivityIntervalMs !== undefined) {

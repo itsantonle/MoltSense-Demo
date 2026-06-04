@@ -30,6 +30,13 @@ export async function POST(request: NextRequest) {
     const previousDevice = esp32Store.getDevice(macAddress);
     const numericConductivity = Number(conductivity);
     const hasConductivity = Number.isFinite(numericConductivity);
+    const TELEMETRY_EVENT_INTERVAL_MS = 60 * 1000;
+    const previousTelemetryAt = previousDevice?.lastTelemetryAt
+      ? new Date(previousDevice.lastTelemetryAt).getTime()
+      : 0;
+    const telemetryDue =
+      previousTelemetryAt === 0 ||
+      Date.now() - previousTelemetryAt >= TELEMETRY_EVENT_INTERVAL_MS;
     const inferredMolt =
       hasConductivity &&
       (moltDetected ||
@@ -38,25 +45,41 @@ export async function POST(request: NextRequest) {
           numericConductivity >= config.conductivityThresholdStart &&
           numericConductivity <= config.conductivityThresholdEnd));
 
+    console.log('[esp32/heartbeat] received', {
+      macAddress,
+      conductivity,
+      inferredMolt,
+      moltDetected,
+      errorDetected,
+      previousConductivity: previousDevice?.lastConductivity,
+    });
+
     let device = esp32Store.upsertDevice(macAddress, {
       lastSeen: timestamp,
       signalStrength,
       lastConductivity: hasConductivity ? numericConductivity : previousDevice?.lastConductivity,
     });
 
-    const telemetryEvent = esp32Store.addEvent({
-      type: 'telemetry',
-      macAddress,
-      timestamp,
-      data: {
-        moisture,
-        conductivity,
-        pressure,
-        temperature: Number.isFinite(temperature) ? temperature : mockTemperature(),
-        humidity: Number.isFinite(humidity) ? humidity : mockHumidity(),
-        signalStrength,
-      },
-    });
+    let telemetryEventId: number | undefined;
+    if (telemetryDue || inferredMolt || errorDetected) {
+      const telemetryEvent = esp32Store.addEvent({
+        type: 'telemetry',
+        macAddress,
+        timestamp,
+        data: {
+          moisture,
+          conductivity,
+          pressure,
+          temperature: Number.isFinite(temperature) ? temperature : mockTemperature(),
+          humidity: Number.isFinite(humidity) ? humidity : mockHumidity(),
+          signalStrength,
+        },
+      });
+      telemetryEventId = telemetryEvent.id;
+      device = esp32Store.upsertDevice(macAddress, {
+        lastTelemetryAt: timestamp,
+      });
+    }
 
     let moltEventId: string | undefined;
     if (inferredMolt) {
@@ -72,6 +95,11 @@ export async function POST(request: NextRequest) {
         data: {
           moltEventId,
         },
+      });
+      console.log('[esp32/heartbeat] molt event stored', {
+        macAddress,
+        moltEventId,
+        timestamp,
       });
     }
 
@@ -97,13 +125,20 @@ export async function POST(request: NextRequest) {
         message: 'Heartbeat received',
         timestamp,
         macAddress,
-        eventId: telemetryEvent.id,
+        eventId: telemetryEventId,
         moltEventId,
         moltDetected: inferredMolt,
         config,
         ledConfig: { status: device.ledStatus },
       },
-      { status: 200 }
+      {
+        status: 200,
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+          Pragma: 'no-cache',
+          Expires: '0',
+        },
+      }
     );
   } catch (error) {
     return NextResponse.json(

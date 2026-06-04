@@ -20,6 +20,7 @@ export interface Esp32DeviceState {
   lastSeen: string;
   ledStatus: 'on' | 'off' | 'blinking';
   lastMoltAt?: string;
+  lastTelemetryAt?: string;
   errorState?: boolean;
   signalStrength?: number;
   lastConductivity?: number;
@@ -50,10 +51,19 @@ const DEFAULT_CONFIG: Esp32Config = {
   moistureThresholdLow: 45,
   moistureThresholdHigh: 80,
   moltCooldownMs: 30 * 60 * 1000,
-  moistureIntervalMs: 5000,
+  moistureIntervalMs: 60000,
   conductivityIntervalMs: 300,
   errorAfterMs: 7 * 24 * 60 * 60 * 1000,
 };
+
+const MIN_HEARTBEAT_INTERVAL_MS = 60000;
+
+const clampConfig = (updates: Partial<Esp32Config>): Partial<Esp32Config> => ({
+  ...updates,
+  ...(updates.moistureIntervalMs === undefined
+    ? {}
+    : { moistureIntervalMs: Math.max(updates.moistureIntervalMs, MIN_HEARTBEAT_INTERVAL_MS) }),
+});
 
 const getStore = (): Esp32Store => {
   const globalStore = globalThis as typeof globalThis & {
@@ -80,13 +90,13 @@ export const esp32Store = {
   },
   setConfig: (updates: Partial<Esp32Config>) => {
     const store = getStore();
-    store.config = { ...store.config, ...updates };
+    store.config = { ...store.config, ...clampConfig(updates) };
   },
   setDeviceConfig: (macAddress: string, updates: Partial<Esp32Config>) => {
     const store = getStore();
     store.deviceConfigs[macAddress] = {
       ...(store.deviceConfigs[macAddress] ?? {}),
-      ...updates,
+      ...clampConfig(updates),
     };
   },
   clearDeviceConfig: (macAddress: string) => {
@@ -110,6 +120,7 @@ export const esp32Store = {
       registered: existing?.registered ?? false,
       lastSeen: existing?.lastSeen ?? now,
       ledStatus: existing?.ledStatus ?? 'off',
+      lastTelemetryAt: existing?.lastTelemetryAt,
       ...updates,
     };
     return store.devices[macAddress];
