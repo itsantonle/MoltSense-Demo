@@ -133,6 +133,8 @@ const toFiniteNumber = (value: unknown, fallback: number) => {
   return Number.isFinite(parsed) ? parsed : fallback;
 };
 
+const normalizeMacAddress = (value: string) => value.trim().toLowerCase();
+
 const normalizeEsp32Config = (config?: LegacyEsp32Config | null): Esp32Config => ({
   conductivityThresholdStart: toFiniteNumber(
     config?.conductivityThresholdStart ?? config?.conductivityMin ?? config?.conductivityThreshold,
@@ -537,13 +539,35 @@ export const storageUtils = {
   getUndiscoveredDevices: (): UndiscoveredDevice[] => {
     if (typeof window === 'undefined') return [];
     const data = localStorage.getItem(STORAGE_KEYS.UNDISCOVERED);
-    return data ? JSON.parse(data) : [];
+    const devices: UndiscoveredDevice[] = data ? JSON.parse(data) : [];
+    const registeredMacs = new Set(
+      storageUtils.getCells().map((cell) => normalizeMacAddress(cell.macAddress))
+    );
+    const filtered = devices.filter(
+      (device) => !registeredMacs.has(normalizeMacAddress(device.macAddress))
+    );
+
+    if (filtered.length !== devices.length) {
+      localStorage.setItem(STORAGE_KEYS.UNDISCOVERED, JSON.stringify(filtered));
+    }
+
+    return filtered;
   },
 
   addUndiscoveredDevice: (device: UndiscoveredDevice) => {
     if (typeof window === 'undefined') return;
     const devices = storageUtils.getUndiscoveredDevices();
-    const existing = devices.find((d) => d.macAddress === device.macAddress);
+    const deviceMac = normalizeMacAddress(device.macAddress);
+    const registeredMacs = new Set(
+      storageUtils.getCells().map((cell) => normalizeMacAddress(cell.macAddress))
+    );
+
+    if (registeredMacs.has(deviceMac)) {
+      localStorage.setItem(STORAGE_KEYS.UNDISCOVERED, JSON.stringify(devices));
+      return;
+    }
+
+    const existing = devices.find((d) => normalizeMacAddress(d.macAddress) === deviceMac);
     if (existing) {
       existing.lastSeen = device.lastSeen;
       existing.signalStrength = device.signalStrength;
@@ -555,9 +579,10 @@ export const storageUtils = {
 
   removeUndiscoveredDevice: (macAddress: string) => {
     if (typeof window === 'undefined') return;
+    const targetMac = normalizeMacAddress(macAddress);
     const devices = storageUtils
       .getUndiscoveredDevices()
-      .filter((d) => d.macAddress !== macAddress);
+      .filter((d) => normalizeMacAddress(d.macAddress) !== targetMac);
     localStorage.setItem(STORAGE_KEYS.UNDISCOVERED, JSON.stringify(devices));
   },
 

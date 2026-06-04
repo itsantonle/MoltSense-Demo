@@ -22,6 +22,7 @@ export interface Esp32DeviceState {
   lastMoltAt?: string;
   errorState?: boolean;
   signalStrength?: number;
+  lastConductivity?: number;
 }
 
 export interface Esp32Config {

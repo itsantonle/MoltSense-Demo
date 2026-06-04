@@ -27,10 +27,21 @@ export async function POST(request: NextRequest) {
 
     const timestamp = new Date().toISOString();
     const config = esp32Store.resolveConfig(macAddress);
+    const previousDevice = esp32Store.getDevice(macAddress);
+    const numericConductivity = Number(conductivity);
+    const hasConductivity = Number.isFinite(numericConductivity);
+    const inferredMolt =
+      hasConductivity &&
+      (moltDetected ||
+        ((previousDevice?.lastConductivity === undefined ||
+          previousDevice.lastConductivity < config.conductivityThresholdStart) &&
+          numericConductivity >= config.conductivityThresholdStart &&
+          numericConductivity <= config.conductivityThresholdEnd));
 
-    const device = esp32Store.upsertDevice(macAddress, {
+    let device = esp32Store.upsertDevice(macAddress, {
       lastSeen: timestamp,
       signalStrength,
+      lastConductivity: hasConductivity ? numericConductivity : previousDevice?.lastConductivity,
     });
 
     const telemetryEvent = esp32Store.addEvent({
@@ -48,9 +59,9 @@ export async function POST(request: NextRequest) {
     });
 
     let moltEventId: string | undefined;
-    if (moltDetected) {
+    if (inferredMolt) {
       moltEventId = `molt-${macAddress}-${Date.now()}`;
-      esp32Store.upsertDevice(macAddress, {
+      device = esp32Store.upsertDevice(macAddress, {
         ledStatus: 'on',
         lastMoltAt: timestamp,
       });
@@ -88,6 +99,7 @@ export async function POST(request: NextRequest) {
         macAddress,
         eventId: telemetryEvent.id,
         moltEventId,
+        moltDetected: inferredMolt,
         config,
         ledConfig: { status: device.ledStatus },
       },
