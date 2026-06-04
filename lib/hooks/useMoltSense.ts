@@ -194,7 +194,7 @@ export const useMoltSense = () => {
           setMoltEvents(storageUtils.getMoltEvents());
           setAlerts(storageUtils.getAlerts());
           setUndiscoveredDevices(storageUtils.getUndiscoveredDevices());
-        }, 50);
+        }, 100);
       } catch (error) {
         console.warn('Failed to sync ESP32 events', error);
       }

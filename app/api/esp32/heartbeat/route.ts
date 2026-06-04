@@ -38,11 +38,6 @@ export async function POST(request: NextRequest) {
     const telemetryDue =
       previousTelemetryAt === 0 ||
       Date.now() - previousTelemetryAt >= telemetryIntervalMs;
-    const previousMoltAt = previousDevice?.lastMoltAt
-      ? new Date(previousDevice.lastMoltAt).getTime()
-      : 0;
-    const moltCooldownElapsed =
-      previousMoltAt === 0 || Date.now() - previousMoltAt >= config.moltCooldownMs;
     const previousConductivity = previousDevice?.lastConductivity;
     const conductivityBelowTrigger =
       previousConductivity === undefined ||
@@ -51,7 +46,6 @@ export async function POST(request: NextRequest) {
       hasConductivity && numericConductivity >= config.conductivityThresholdStart;
     const inferredMolt =
       hasConductivity &&
-      moltCooldownElapsed &&
       (moltDetected ||
         (conductivityBelowTrigger && conductivityAboveTrigger));
     const inferredMoltEventId = inferredMolt ? `molt-${macAddress}-${Date.now()}` : undefined;
