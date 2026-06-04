@@ -10,6 +10,15 @@ export async function GET(request: NextRequest) {
   }
 
   const device = esp32Store.getDevice(macAddress);
+  if (!device?.registered) {
+    return NextResponse.json(
+      {
+        error: 'Device must be added before LED control is accepted',
+        code: 'DEVICE_NOT_REGISTERED',
+      },
+      { status: 403 }
+    );
+  }
   return NextResponse.json({
     success: true,
     macAddress,
@@ -27,6 +36,17 @@ export async function POST(request: NextRequest) {
 
     if (!['on', 'off', 'blinking'].includes(ledStatus)) {
       return NextResponse.json({ error: 'Invalid ledStatus' }, { status: 400 });
+    }
+
+    const device = esp32Store.getDevice(macAddress);
+    if (!device?.registered) {
+      return NextResponse.json(
+        {
+          error: 'Device must be added before LED control is accepted',
+          code: 'DEVICE_NOT_REGISTERED',
+        },
+        { status: 403 }
+      );
     }
 
     esp32Store.upsertDevice(macAddress, {
