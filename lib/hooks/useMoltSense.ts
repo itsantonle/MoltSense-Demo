@@ -210,6 +210,45 @@ export const useMoltSense = () => {
     };
   }, []);
 
+  useEffect(() => {
+    const syncDiscovery = async () => {
+      try {
+        const response = await fetch('/api/esp32/discovery', {
+          cache: 'no-store',
+        });
+        if (!response.ok) return;
+
+        const payload = await response.json();
+        const devices = Array.isArray(payload?.devices) ? payload.devices : [];
+        if (!devices.length) return;
+
+        devices.forEach(
+          (device: {
+            macAddress: string;
+            firstSeen?: string;
+            lastSeen?: string;
+            signalStrength?: number;
+          }) => {
+            storageUtils.addUndiscoveredDevice({
+              macAddress: device.macAddress,
+              firstSeen: device.firstSeen ?? device.lastSeen ?? new Date().toISOString(),
+              lastSeen: device.lastSeen ?? new Date().toISOString(),
+              signalStrength: Number(device.signalStrength ?? 80),
+            });
+          }
+        );
+
+        setUndiscoveredDevices(storageUtils.getUndiscoveredDevices());
+      } catch (error) {
+        console.warn('Failed to sync ESP32 discovery', error);
+      }
+    };
+
+    syncDiscovery();
+    const interval = setInterval(syncDiscovery, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
   const addCell = useCallback(
     (cell: Cell) => {
       storageUtils.addCell(cell);

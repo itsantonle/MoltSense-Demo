@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
     });
 
     let device = esp32Store.upsertDevice(macAddress, {
-      registered: registeredDevice?.registered ?? true,
+      registered: registeredDevice?.registered ?? false,
       lastSeen: timestamp,
       signalStrength,
       lastConductivity: hasConductivity
