@@ -29,9 +29,13 @@ export function AlertsPage() {
     }
   }, [alerts]);
 
-  const getCellName = (cellId: string) => {
-    const cell = cells.find((c) => c.id === cellId);
-    return cell ? `Cell ${cell.cellNumber}` : 'Unknown Cell';
+  const getCellName = (cellId: string, macAddress?: string) => {
+    const cell = cells.find((c) => {
+      if (c.id === cellId) return true;
+      if (!macAddress) return false;
+      return c.macAddress.trim().toLowerCase() === macAddress.trim().toLowerCase();
+    });
+    return cell ? `Cell ${cell.cellNumber}` : `Cell ${cellId}`;
   };
 
   const filteredAlerts = alerts.filter((alert) => {
@@ -172,7 +176,7 @@ export function AlertsPage() {
                       <div className="flex items-start justify-between mb-2">
                         <div>
                           <p className="font-bold text-slate-100">
-                            {getCellName(alert.cellId)} - {alert.type === 'molt' ? 'Molt Detected' : 'Error'}
+                            {getCellName(alert.cellId, alert.macAddress)} - {alert.type === 'molt' ? 'Molt Detected' : 'Error'}
                           </p>
                           <p className="text-sm text-slate-400 mt-1">
                             {alert.message}

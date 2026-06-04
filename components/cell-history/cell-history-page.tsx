@@ -11,6 +11,8 @@ import { acknowledgeMolt } from '@/lib/esp32';
 const formatHour = (date: Date) =>
   date.toLocaleTimeString([], { hour: 'numeric', hour12: true });
 
+const normalizeMacAddress = (value: string) => value.trim().toLowerCase();
+
 export function CellHistoryPage() {
   const params = useParams();
   const cellId = Array.isArray(params?.id) ? params?.id[0] : params?.id;
@@ -24,9 +26,15 @@ export function CellHistoryPage() {
   const cellEvents = useMemo(() => {
     if (!cellId) return [];
     return moltEvents
-      .filter((event) => event.cellId === cellId)
+      .filter((event) => {
+        if (event.cellId === cellId) return true;
+        if (!cell?.macAddress || !event.macAddress) return false;
+        return (
+          normalizeMacAddress(event.macAddress) === normalizeMacAddress(cell.macAddress)
+        );
+      })
       .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-  }, [moltEvents, cellId]);
+  }, [moltEvents, cellId, cell?.macAddress]);
 
   const avgIntervalDays = useMemo(() => {
     if (cellEvents.length < 2) return null;

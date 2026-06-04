@@ -19,9 +19,15 @@ export function MoltHistoryPage() {
     setRacks(storageUtils.getRacks());
   }, [cells.length]);
 
+  const normalizeMacAddress = (value: string) => value.trim().toLowerCase();
+
   const rows = useMemo(() => {
     return moltEvents.map((event) => {
-      const cell = cells.find((item) => item.id === event.cellId);
+      const cell = cells.find((item) => {
+        if (item.id === event.cellId) return true;
+        if (!event.macAddress) return false;
+        return normalizeMacAddress(item.macAddress) === normalizeMacAddress(event.macAddress);
+      });
       const rack = racks.find((item) => item.id === cell?.rackId);
       const set = sets.find((item) => item.id === rack?.setId);
       return {
@@ -36,10 +42,11 @@ export function MoltHistoryPage() {
   const filteredRows = useMemo(() => {
     const query = search.trim().toLowerCase();
     if (!query) return rows;
-    return rows.filter(({ cell, rack, set }) => {
+    return rows.filter(({ event, cell, rack, set }) => {
       return (
         `${cell?.cellNumber ?? ''}`.includes(query) ||
         cell?.macAddress?.toLowerCase().includes(query) ||
+        event.macAddress?.toLowerCase().includes(query) ||
         rack?.name?.toLowerCase().includes(query) ||
         set?.name?.toLowerCase().includes(query)
       );
@@ -250,7 +257,13 @@ export function MoltHistoryPage() {
                 </div>
                 <div className="flex items-center justify-between sm:block">
                   <span className="text-[10px] text-slate-500 sm:hidden">Cell</span>
-                  <span>{cell ? `Cell ${cell.cellNumber}` : 'Unknown'}</span>
+                  <span>
+                    {cell
+                      ? `Cell ${cell.cellNumber}`
+                      : event.macAddress
+                      ? event.macAddress
+                      : event.cellId}
+                  </span>
                 </div>
                 <div className="flex items-center justify-between sm:block">
                   <span className="text-[10px] text-slate-500 sm:hidden">Rack</span>

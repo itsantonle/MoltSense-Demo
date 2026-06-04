@@ -61,6 +61,46 @@ export const useMoltSense = () => {
         const existingEventIds = new Set(existingEvents.map((event) => event.id));
         const nextAlerts = storageUtils.getAlerts();
 
+        const applyMoltToCell = (
+          cellId: string,
+          macAddress: string,
+          timestamp: string,
+          moltEventId: string,
+          shouldMarkAlert: boolean
+        ) => {
+          if (!existingEventIds.has(moltEventId)) {
+            storageUtils.addMoltEvent({
+              id: moltEventId,
+              cellId,
+              macAddress,
+              timestamp,
+              duration: 4.5,
+              acknowledged: false,
+            });
+            existingEventIds.add(moltEventId);
+
+            if (shouldMarkAlert) {
+              const alert: Alert = {
+                id: `alert-${Date.now()}-${cellId}`,
+                cellId,
+                macAddress,
+                type: 'molt',
+                message: 'Molt detected in cell',
+                timestamp,
+                read: false,
+              };
+              nextAlerts.push(alert);
+              storageUtils.addAlert(alert);
+            }
+          }
+
+          storageUtils.updateCell(cellId, {
+            lastMolt: timestamp,
+            ledStatus: 'on',
+            status: 'active',
+          });
+        };
+
         events.forEach((event: { id: number; type: string; macAddress: string; timestamp: string; data?: Record<string, unknown> }) => {
           lastEventIdRef.current = Math.max(lastEventIdRef.current, event.id);
           const cellsSnapshot = storageUtils.getCells();
@@ -104,37 +144,17 @@ export const useMoltSense = () => {
               humidity: Number(event.data?.humidity ?? cell.humidity),
               ledStatus: (event.data?.ledStatus as Cell['ledStatus']) ?? cell.ledStatus,
             });
+
+            const telemetryMoltDetected = Boolean(event.data?.moltDetected);
+            const telemetryMoltEventId = String(event.data?.moltEventId ?? `molt-telemetry-${event.id}`);
+            if (telemetryMoltDetected) {
+              applyMoltToCell(cell.id, event.macAddress, timestamp, telemetryMoltEventId, true);
+            }
           }
 
           if (event.type === 'molt') {
             const moltEventId = String(event.data?.moltEventId ?? `molt-${event.id}`);
-            if (!existingEventIds.has(moltEventId)) {
-              const newEvent: MoltEvent = {
-                id: moltEventId,
-                cellId: cell.id,
-                timestamp,
-                duration: 4.5,
-                acknowledged: false,
-              };
-              storageUtils.addMoltEvent(newEvent);
-              existingEventIds.add(moltEventId);
-
-              const alert: Alert = {
-                id: `alert-${Date.now()}-${cell.id}`,
-                cellId: cell.id,
-                type: 'molt',
-                message: 'Molt detected in cell',
-                timestamp,
-                read: false,
-              };
-              nextAlerts.push(alert);
-              storageUtils.addAlert(alert);
-            }
-            storageUtils.updateCell(cell.id, {
-              lastMolt: timestamp,
-              ledStatus: 'on',
-              status: 'active',
-            });
+            applyMoltToCell(cell.id, event.macAddress, timestamp, moltEventId, true);
           }
 
           if (event.type === 'error') {
@@ -146,6 +166,7 @@ export const useMoltSense = () => {
             const alert: Alert = {
               id: `alert-${Date.now()}-${cell.id}`,
               cellId: cell.id,
+              macAddress: event.macAddress,
               type: 'sensor_error',
               message: String(event.data?.message ?? 'Sensor error detected'),
               timestamp,

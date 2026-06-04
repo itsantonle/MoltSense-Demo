@@ -23,6 +23,7 @@ export interface Cell {
 export interface MoltEvent {
   id: string;
   cellId: string;
+  macAddress?: string;
   timestamp: string;
   duration: number; // Duration in hours
   acknowledged: boolean;
@@ -76,6 +77,7 @@ export interface UndiscoveredDevice {
 export interface Alert {
   id: string;
   cellId: string;
+  macAddress?: string;
   type: 'molt' | 'sensor_error' | 'offline';
   message: string;
   timestamp: string;

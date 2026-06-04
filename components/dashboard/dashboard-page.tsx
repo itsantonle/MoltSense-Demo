@@ -13,6 +13,8 @@ import { SortOption } from './sort-dropdown';
 import { TemperatureUnit, WeightUnit } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
+const normalizeMacAddress = (value: string) => value.trim().toLowerCase();
+
 export function DashboardPage() {
   const { cells, isLoading, updateCell } = useMoltSense();
   const [racks, setRacks] = useState<Rack[]>([]);
@@ -59,9 +61,15 @@ export function DashboardPage() {
 
   const lastMoltByCellId = moltEvents.reduce<Record<string, MoltEvent>>(
     (acc, event) => {
-      const existing = acc[event.cellId];
+      const resolvedCell = cells.find((cell) => {
+        if (cell.id === event.cellId) return true;
+        if (!event.macAddress) return false;
+        return normalizeMacAddress(cell.macAddress) === normalizeMacAddress(event.macAddress);
+      });
+      const targetCellId = resolvedCell?.id ?? event.cellId;
+      const existing = acc[targetCellId];
       if (!existing || new Date(event.timestamp) > new Date(existing.timestamp)) {
-        acc[event.cellId] = event;
+        acc[targetCellId] = event;
       }
       return acc;
     },

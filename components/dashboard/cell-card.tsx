@@ -8,6 +8,8 @@ import { Gauge, Droplets, Thermometer, Wind, Trash2, AlertCircle } from 'lucide-
 import gsap from 'gsap';
 import { useEffect, useRef, useState } from 'react';
 
+const normalizeMacAddress = (value: string) => value.trim().toLowerCase();
+
 interface CellCardProps {
   cell: Cell;
   moltEvents?: MoltEvent[];
@@ -71,7 +73,11 @@ export function CellCard({
   };
 
   const cellEvents = moltEvents
-    .filter((event) => event.cellId === cell.id)
+    .filter((event) => {
+      if (event.cellId === cell.id) return true;
+      if (!event.macAddress) return false;
+      return normalizeMacAddress(event.macAddress) === normalizeMacAddress(cell.macAddress);
+    })
     .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
   const lastMoltTime = cellEvents[0]?.timestamp || cell.lastMolt;
   const needsCheck = Boolean(lastMoltTime) && cell.ledStatus === 'on';
