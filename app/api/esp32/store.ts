@@ -46,8 +46,8 @@ interface Esp32Store {
 }
 
 const DEFAULT_CONFIG: Esp32Config = {
-  conductivityThresholdStart: 1400,
-  conductivityThresholdEnd: 2200,
+  conductivityThresholdStart: 180,
+  conductivityThresholdEnd: 200,
   moistureThresholdLow: 45,
   moistureThresholdHigh: 80,
   moltCooldownMs: 30 * 60 * 1000,

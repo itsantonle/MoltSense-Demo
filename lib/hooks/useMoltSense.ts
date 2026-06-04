@@ -41,7 +41,7 @@ export const useMoltSense = () => {
     loadData();
 
     // Set up polling for simulated ESP32 data
-    const interval = setInterval(loadData, 1000);
+    const interval = setInterval(loadData, 500);
     return () => clearInterval(interval);
   }, []);
 
@@ -194,14 +194,14 @@ export const useMoltSense = () => {
           setMoltEvents(storageUtils.getMoltEvents());
           setAlerts(storageUtils.getAlerts());
           setUndiscoveredDevices(storageUtils.getUndiscoveredDevices());
-        }, 100);
+        }, 50);
       } catch (error) {
         console.warn('Failed to sync ESP32 events', error);
       }
     };
 
     syncEsp32Events();
-    const interval = setInterval(syncEsp32Events, 800);
+    const interval = setInterval(syncEsp32Events, 250);
     return () => {
       clearInterval(interval);
       if (reflectionTimerRef.current) {
