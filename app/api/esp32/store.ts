@@ -19,7 +19,6 @@ export interface Esp32DeviceState {
   registered: boolean;
   lastSeen: string;
   ledStatus: 'on' | 'off';
-  moltAcknowledged: boolean;
   lastMoltAt?: string;
   lastTelemetryAt?: string;
   errorState?: boolean;
@@ -126,7 +125,6 @@ export const esp32Store = {
       registered: existing?.registered ?? false,
       lastSeen: existing?.lastSeen ?? now,
       ledStatus: existing?.ledStatus ?? 'off',
-      moltAcknowledged: existing?.moltAcknowledged ?? true,
       lastTelemetryAt: existing?.lastTelemetryAt,
       ...updates,
     };

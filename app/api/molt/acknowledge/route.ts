@@ -15,8 +15,6 @@ export async function POST(request: NextRequest) {
     const timestamp = new Date().toISOString();
 
     esp32Store.upsertDevice(macAddress, {
-      ledStatus: 'off',
-      moltAcknowledged: true,
       lastSeen: timestamp,
     });
 
