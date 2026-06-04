@@ -39,6 +39,7 @@ export async function POST(request: NextRequest) {
     esp32Store.upsertDevice(macAddress, {
       registered: device?.registered ?? false,
       ledStatus,
+      moltAcknowledged: ledStatus === 'off' ? true : device?.moltAcknowledged ?? true,
       lastSeen: new Date().toISOString(),
     });
 

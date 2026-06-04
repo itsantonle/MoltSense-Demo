@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
         : previousDevice?.lastConductivity,
       ledStatus: ledStatus ?? previousDevice?.ledStatus ?? 'off',
       moltAcknowledged:
-        inferredMolt ? false : previousDevice?.moltAcknowledged ?? true,
+        inferredMolt ? false : ledStatus === 'off' ? true : previousDevice?.moltAcknowledged ?? true,
     });
 
     let telemetryEventId: number | undefined;
