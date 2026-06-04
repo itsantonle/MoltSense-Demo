@@ -69,8 +69,13 @@ export async function POST(request: NextRequest) {
       lastConductivity: hasConductivity
         ? numericConductivity
         : previousDevice?.lastConductivity,
-      ledStatus: ledStatus ?? previousDevice?.ledStatus ?? 'off',
-    })
+      ledStatus:
+        inferredMolt
+          ? 'on'
+          : ledStatus === 'off' && previousDevice?.lastMoltAt
+            ? 'on'
+            : ledStatus ?? previousDevice?.ledStatus ?? 'off',
+    });
 
     let telemetryEventId: number | undefined;
     let moltEventId: string | undefined;
