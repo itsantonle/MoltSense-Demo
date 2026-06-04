@@ -8,7 +8,7 @@ import { storageUtils } from '@/lib/localStorage';
 import Link from 'next/link';
 import { Plus, AlertCircle, Info } from 'lucide-react';
 import { CellCard } from './cell-card';
-import { sendLedCommand } from '@/lib/esp32';
+import { sendLedCommand, unregisterEsp32Device } from '@/lib/esp32';
 import { SortOption } from './sort-dropdown';
 import { TemperatureUnit, WeightUnit } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -44,6 +44,16 @@ export function DashboardPage() {
     const nextStatus = cell.ledStatus === 'on' ? 'off' : 'on';
     sendLedCommand(cell.macAddress, nextStatus);
     updateCell(cell.id, { ledStatus: nextStatus });
+  };
+
+  const handleRemoveCell = async (cell: Cell) => {
+    const confirmed = window.confirm(
+      `Remove Cell ${cell.cellNumber}? This will delete its local history, alerts, and settings, unregister the device so it can be rediscovered later, and clear it from the dashboard.`
+    );
+    if (!confirmed) return;
+
+    await unregisterEsp32Device(cell.macAddress);
+    removeCell(cell.id);
   };
 
   const getRackCells = (rackId: string): Cell[] => {
@@ -314,7 +324,9 @@ export function DashboardPage() {
                     weightUnit={weightUnit}
                     tempUnit={tempUnit}
                     onToggleLed={() => handleToggleLed(cell)}
-                    onRemove={(cellId) => removeCell(cellId)}
+                    onRemove={() => {
+                      void handleRemoveCell(cell);
+                    }}
                   />
                 </motion.div>
               ))}

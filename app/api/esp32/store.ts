@@ -111,6 +111,11 @@ export const esp32Store = {
     const store = getStore();
     return store.devices[macAddress];
   },
+  removeDevice: (macAddress: string) => {
+    const store = getStore();
+    delete store.devices[macAddress];
+    delete store.deviceConfigs[macAddress];
+  },
   upsertDevice: (macAddress: string, updates: Partial<Esp32DeviceState>) => {
     const store = getStore();
     const existing = store.devices[macAddress];
