@@ -16,7 +16,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 const normalizeMacAddress = (value: string) => value.trim().toLowerCase();
 
 export function DashboardPage() {
-  const { cells, isLoading, updateCell } = useMoltSense();
+  const { cells, isLoading, updateCell, removeCell } = useMoltSense();
   const [racks, setRacks] = useState<Rack[]>([]);
   const [sets, setSets] = useState<RackSet[]>([]);
   const [moltEvents, setMoltEvents] = useState<MoltEvent[]>([]);
@@ -314,6 +314,7 @@ export function DashboardPage() {
                     weightUnit={weightUnit}
                     tempUnit={tempUnit}
                     onToggleLed={() => handleToggleLed(cell)}
+                    onRemove={(cellId) => removeCell(cellId)}
                   />
                 </motion.div>
               ))}

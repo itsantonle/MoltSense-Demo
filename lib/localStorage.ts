@@ -481,8 +481,48 @@ export const storageUtils = {
     const target = cells.find((cell) => cell.id === id);
     const remaining = cells.filter((cell) => cell.id !== id);
     localStorage.setItem(STORAGE_KEYS.CELLS, JSON.stringify(remaining));
+
+    const remainingEvents = storageUtils
+      .getMoltEvents()
+      .filter(
+        (event) => event.cellId !== id && event.macAddress !== target?.macAddress
+      );
+    localStorage.setItem(STORAGE_KEYS.MOLT_EVENTS, JSON.stringify(remainingEvents));
+
+    const remainingAlerts = storageUtils
+      .getAlerts()
+      .filter((alert) => alert.cellId !== id && alert.macAddress !== target?.macAddress);
+    localStorage.setItem(STORAGE_KEYS.ALERTS, JSON.stringify(remainingAlerts));
+
+    const targetMac = target?.macAddress;
+    if (targetMac) {
+      storageUtils.clearEsp32DeviceConfig(targetMac);
+    }
+
     if (target?.rackId) {
+      const racks = storageUtils.getRacks();
+      const rack = racks.find((item) => item.id === target.rackId);
+      if (rack) {
+        rack.cells = rack.cells.filter((cellId) => cellId !== id);
+        localStorage.setItem(STORAGE_KEYS.RACKS, JSON.stringify(racks));
+      }
       storageUtils.reindexCellsInRack(target.rackId);
+    }
+
+    const hubs = storageUtils.getHubs();
+    hubs.forEach((hub) => {
+      if (hub.cells.includes(id)) {
+        hub.cells = hub.cells.filter((cellId) => cellId !== id);
+      }
+    });
+    localStorage.setItem(STORAGE_KEYS.HUBS, JSON.stringify(hubs));
+
+    if (targetMac) {
+      const normalizedTargetMac = normalizeMacAddress(targetMac);
+      const undiscovered = storageUtils
+        .getUndiscoveredDevices()
+        .filter((device) => normalizeMacAddress(device.macAddress) !== normalizedTargetMac);
+      localStorage.setItem(STORAGE_KEYS.UNDISCOVERED, JSON.stringify(undiscovered));
     }
   },
 
@@ -832,7 +872,12 @@ export const storageUtils = {
     const data = localStorage.getItem(STORAGE_KEYS.ESP32_DEVICE_CONFIG);
     if (!data) return;
     const map = JSON.parse(data) as Record<string, LegacyEsp32Config>;
-    delete map[macAddress];
+    const normalizedTarget = normalizeMacAddress(macAddress);
+    Object.keys(map).forEach((key) => {
+      if (normalizeMacAddress(key) === normalizedTarget) {
+        delete map[key];
+      }
+    });
     localStorage.setItem(STORAGE_KEYS.ESP32_DEVICE_CONFIG, JSON.stringify(map));
   },
   clearAllEsp32DeviceConfigs: () => {
