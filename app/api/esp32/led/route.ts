@@ -10,9 +10,13 @@ export async function GET(request: NextRequest) {
   }
 
   const device = esp32Store.getDevice(macAddress);
-  const ledStatus = device?.ledStatus ?? 'off';
+  const ledStatus = device?.ledStatus ?? (device?.lastMoltAt ? 'on' : 'off');
 
-  
+  return NextResponse.json({
+    success: true,
+    macAddress,
+    ledStatus,
+  });
 }
 
 export async function POST(request: NextRequest) {
@@ -23,7 +27,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    if (!['on', 'off', 'blinking'].includes(ledStatus)) {
+    if (!['on', 'off'].includes(ledStatus)) {
       return NextResponse.json({ error: 'Invalid ledStatus' }, { status: 400 });
     }
 

@@ -18,6 +18,7 @@ export async function POST(request: NextRequest) {
       ledStatus: 'off',
       lastMoltAt: undefined,
       lastSeen: timestamp,
+      errorState: false,
     });
 
     esp32Store.addEvent({

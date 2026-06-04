@@ -2,7 +2,7 @@ import type { Esp32Config } from '@/lib/localStorage';
 
 export const sendLedCommand = async (
   macAddress: string,
-  ledStatus: 'on' | 'off' | 'blinking'
+  ledStatus: 'on' | 'off'
 ) => {
   try {
     await fetch('/api/esp32/led', {

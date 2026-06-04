@@ -35,14 +35,7 @@ export function CellCard({
   useEffect(() => {
     if (!ledRef.current) return;
 
-    if (cell.ledStatus === 'blinking') {
-      gsap.to(ledRef.current, {
-        opacity: 0.3,
-        duration: 0.5,
-        yoyo: true,
-        repeat: -1,
-      });
-    } else if (cell.ledStatus === 'on') {
+    if (cell.ledStatus === 'on') {
       gsap.to(ledRef.current, {
         opacity: 1,
         boxShadow: '0 0 20px rgba(34, 211, 238, 0.8)',
@@ -136,15 +129,11 @@ export function CellCard({
                 <div
                   ref={ledRef}
                   className={`w-3 h-3 rounded-full border-2 border-cyan-400 ${
-                    cell.ledStatus === 'on'
-                      ? 'bg-green-400'
-                      : cell.ledStatus === 'blinking'
-                      ? 'bg-yellow-400'
-                      : 'bg-gray-400'
+                    cell.ledStatus === 'on' ? 'bg-green-400' : 'bg-gray-400'
                   }`}
                 />
                 <span className="text-xs text-slate-300">
-                  LED {cell.ledStatus === 'on' ? 'ON' : cell.ledStatus === 'blinking' ? 'BLINKING' : 'OFF'}
+                  LED {cell.ledStatus === 'on' ? 'ON' : 'OFF'}
                 </span>
               </button>
               {/* Status Badge */}

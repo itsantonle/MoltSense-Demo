@@ -236,8 +236,8 @@ export function DashboardPage() {
                                     <div className="rounded bg-slate-800/70 border border-cyan-500/20 px-3 py-2 hover:border-cyan-500/40 transition-colors">
                                       <div className="flex items-center justify-between text-xs text-slate-300">
                                         <span className="truncate">Cell {cell.cellNumber}</span>
-                                        <span className={`text-[10px] ${cell.ledStatus === 'on' ? 'text-green-400' : cell.ledStatus === 'blinking' ? 'text-yellow-400' : 'text-slate-500'}`}>
-                                          LED {cell.ledStatus}
+                                        <span className={`text-[10px] ${cell.ledStatus === 'on' ? 'text-green-400' : 'text-slate-500'}`}>
+                                          LED {cell.ledStatus === 'on' ? 'ON' : 'OFF'}
                                         </span>
                                       </div>
                                       <div className="text-[10px] text-cyan-300 mt-1">

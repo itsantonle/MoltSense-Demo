@@ -18,7 +18,7 @@ export interface Esp32DeviceState {
   macAddress: string;
   registered: boolean;
   lastSeen: string;
-  ledStatus: 'on' | 'off' | 'blinking';
+  ledStatus: 'on' | 'off';
   lastMoltAt?: string;
   lastTelemetryAt?: string;
   errorState?: boolean;
