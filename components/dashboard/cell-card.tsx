@@ -119,36 +119,28 @@ export function CellCard({
             </div>
             <div className="flex items-center gap-2">
               {/* LED Status Indicator */}
-              {cell.ledStatus === 'on' && onToggleLed ? (
-                <button
-                  type="button"
-                  onClick={(event) => {
-                    event.preventDefault();
-                    onToggleLed();
-                  }}
-                  className="flex items-center gap-1 rounded px-2 py-1 text-xs text-slate-300 hover:bg-slate-800/60"
-                >
-                  <div
-                    ref={ledRef}
-                    className="w-3 h-3 rounded-full border-2 border-cyan-400 bg-green-400"
-                  />
-                  <span className="text-xs text-slate-300">Turn LED Off</span>
-                </button>
-              ) : (
-                <div className="flex items-center gap-1 rounded px-2 py-1 text-xs text-slate-300">
-                  <div
-                    ref={ledRef}
-                    className={`w-3 h-3 rounded-full border-2 border-cyan-400 ${
-                      cell.ledStatus === 'blinking'
-                        ? 'bg-yellow-400'
-                        : 'bg-gray-400'
-                    }`}
-                  />
-                  <span className="text-xs text-slate-300">
-                    LED {cell.ledStatus === 'blinking' ? 'BLINKING' : 'OFF'}
-                  </span>
-                </div>
-              )}
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.preventDefault();
+                  onToggleLed?.();
+                }}
+                className="flex items-center gap-1 rounded px-2 py-1 text-xs text-slate-300 hover:bg-slate-800/60"
+              >
+                <div
+                  ref={ledRef}
+                  className={`w-3 h-3 rounded-full border-2 border-cyan-400 ${
+                    cell.ledStatus === 'on'
+                      ? 'bg-green-400'
+                      : cell.ledStatus === 'blinking'
+                      ? 'bg-yellow-400'
+                      : 'bg-gray-400'
+                  }`}
+                />
+                <span className="text-xs text-slate-300">
+                  LED {cell.ledStatus === 'on' ? 'ON' : cell.ledStatus === 'blinking' ? 'BLINKING' : 'OFF'}
+                </span>
+              </button>
               {/* Status Badge */}
               <span
                 className={`px-2 py-1 rounded text-xs font-bold ${
