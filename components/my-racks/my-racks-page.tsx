@@ -683,17 +683,22 @@ export function MyRacksPage() {
                   <p className="text-xs text-slate-400">Status</p>
                   <p className="text-lg font-semibold text-slate-100 capitalize">{selectedCell.status}</p>
                   <p className="text-xs text-slate-400 mt-2">LED</p>
-                  <button
-                    onClick={() => {
-                      const next = selectedCell.ledStatus === 'on' ? 'off' : 'on';
-                      sendLedCommand(selectedCell.macAddress, next);
-                      storageUtils.updateCell(selectedCell.id, { ledStatus: next });
-                      refreshData();
-                    }}
-                    className="inline-flex items-center gap-2 text-sm text-cyan-300 hover:text-cyan-200"
-                  >
-                    {selectedCell.ledStatus === 'on' ? 'Turn LED Off' : 'Turn LED On'}
-                  </button>
+                  {selectedCell.ledStatus === 'on' ? (
+                    <button
+                      onClick={() => {
+                        sendLedCommand(selectedCell.macAddress, 'off');
+                        storageUtils.updateCell(selectedCell.id, { ledStatus: 'off' });
+                        refreshData();
+                      }}
+                      className="inline-flex items-center gap-2 text-sm text-cyan-300 hover:text-cyan-200"
+                    >
+                      Turn LED Off
+                    </button>
+                  ) : (
+                    <span className="inline-flex items-center gap-2 text-sm text-slate-400">
+                      LED Off
+                    </span>
+                  )}
                 </div>
                 <div className="p-4 rounded-lg bg-slate-800/60 border border-slate-700/60">
                   <p className="text-xs text-slate-400">Last Molt</p>

@@ -38,10 +38,9 @@ export function DashboardPage() {
     setWeightUnit(storageUtils.getWeightUnit());
     setTempUnit(storageUtils.getTempUnit());
   }, [cells]);
-  const handleToggleLed = (cell: Cell) => {
-    const nextStatus = cell.ledStatus === 'on' ? 'off' : 'on';
-    sendLedCommand(cell.macAddress, nextStatus);
-    updateCell(cell.id, { ledStatus: nextStatus });
+  const handleTurnLedOff = (cell: Cell) => {
+    sendLedCommand(cell.macAddress, 'off');
+    updateCell(cell.id, { ledStatus: 'off' });
   };
 
   const getRackCells = (rackId: string): Cell[] => {
@@ -305,7 +304,7 @@ export function DashboardPage() {
                     moltEvents={moltEvents}
                     weightUnit={weightUnit}
                     tempUnit={tempUnit}
-                    onToggleLed={() => handleToggleLed(cell)}
+                    onToggleLed={cell.ledStatus === 'on' ? () => handleTurnLedOff(cell) : undefined}
                   />
                 </motion.div>
               ))}

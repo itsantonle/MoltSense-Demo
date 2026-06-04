@@ -9,7 +9,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    if (!['on', 'off', 'blinking'].includes(ledStatus)) {
+    if (!['off', 'blinking'].includes(ledStatus)) {
       return NextResponse.json({ error: 'Invalid ledStatus' }, { status: 400 });
     }
 
