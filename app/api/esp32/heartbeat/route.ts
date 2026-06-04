@@ -69,9 +69,9 @@ export async function POST(request: NextRequest) {
       lastConductivity: hasConductivity
         ? numericConductivity
         : previousDevice?.lastConductivity,
-    ledStatus: ledStatus ?? previousDevice?.ledStatus,
+      ledStatus: ledStatus ?? previousDevice?.ledStatus,
 
-    })
+    });
 
     let telemetryEventId: number | undefined;
     let moltEventId: string | undefined;

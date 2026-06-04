@@ -10,13 +10,10 @@ export async function GET(request: NextRequest) {
   }
 
   const device = esp32Store.getDevice(macAddress);
-const ledStatus = device?.ledStatus
-
-
   return NextResponse.json({
     success: true,
     macAddress,
-    ledStatus,
+    ledStatus: device?.ledStatus ?? 'off',
   });
 }
 
@@ -36,7 +33,6 @@ export async function POST(request: NextRequest) {
     esp32Store.upsertDevice(macAddress, {
       registered: device?.registered ?? false,
       ledStatus,
-      lastMoltAt: ledStatus === 'off' ? undefined : device?.lastMoltAt,
       lastSeen: new Date().toISOString(),
     });
 
