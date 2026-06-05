@@ -6,7 +6,6 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Calendar, Clock, Settings2, TrendingUp } from 'lucide-react';
 import { useMoltSense } from '@/lib/hooks/useMoltSense';
-import { acknowledgeMolt } from '@/lib/esp32';
 
 const formatHour = (date: Date) =>
   date.toLocaleTimeString([], { hour: 'numeric', hour12: true });
@@ -16,7 +15,7 @@ const normalizeMacAddress = (value: string) => value.trim().toLowerCase();
 export function CellHistoryPage() {
   const params = useParams();
   const cellId = Array.isArray(params?.id) ? params?.id[0] : params?.id;
-  const { cells, moltEvents, acknowledgeMoltEvent, isLoading } = useMoltSense();
+  const { cells, moltEvents, isLoading } = useMoltSense();
 
   const cell = useMemo(
     () => cells.find((item) => item.id === cellId),
@@ -185,17 +184,6 @@ export function CellHistoryPage() {
                     <span className={`text-xs font-semibold ${event.acknowledged ? 'text-green-400' : 'text-yellow-300'}`}>
                       {event.acknowledged ? 'Acknowledged' : 'Pending'}
                     </span>
-                    {!event.acknowledged && cell && (
-                      <button
-                        onClick={async () => {
-                          acknowledgeMoltEvent(event.id);
-                          await acknowledgeMolt(cell.macAddress, event.id);
-                        }}
-                        className="text-xs px-2 py-1 rounded bg-cyan-500/20 text-cyan-200 border border-cyan-500/40"
-                      >
-                        Acknowledge
-                      </button>
-                    )}
                   </div>
                 </div>
               ))}

@@ -15,7 +15,6 @@ import {
 } from '@/components/ui/dialog';
 import Link from 'next/link';
 import { ConfirmDialog } from '@/components/shared/confirm-dialog';
-import { sendLedCommand } from '@/lib/esp32';
 
 const moveItem = <T,>(items: T[], fromIndex: number, toIndex: number): T[] => {
   const next = [...items];
@@ -683,17 +682,13 @@ export function MyRacksPage() {
                   <p className="text-xs text-slate-400">Status</p>
                   <p className="text-lg font-semibold text-slate-100 capitalize">{selectedCell.status}</p>
                   <p className="text-xs text-slate-400 mt-2">LED</p>
-                  <button
-                    onClick={() => {
-                      const next = selectedCell.ledStatus === 'on' ? 'off' : 'on';
-                      sendLedCommand(selectedCell.macAddress, next);
-                      storageUtils.updateCell(selectedCell.id, { ledStatus: next });
-                      refreshData();
-                    }}
-                    className="inline-flex items-center gap-2 text-sm text-cyan-300 hover:text-cyan-200"
-                  >
-                    {selectedCell.ledStatus === 'on' ? 'Turn LED Off' : 'Turn LED On'}
-                  </button>
+                  <p className="text-sm text-cyan-300">
+                    {selectedCell.ledStatus === 'on'
+                      ? 'LED is ON'
+                      : selectedCell.ledStatus === 'blinking'
+                      ? 'LED is BLINKING'
+                      : 'LED is OFF'}
+                  </p>
                 </div>
                 <div className="p-4 rounded-lg bg-slate-800/60 border border-slate-700/60">
                   <p className="text-xs text-slate-400">Last Molt</p>

@@ -15,7 +15,6 @@ interface CellCardProps {
   moltEvents?: MoltEvent[];
   weightUnit?: WeightUnit;
   tempUnit?: TemperatureUnit;
-  onToggleLed?: () => void;
   onRemove?: (id: string) => void;
 }
 
@@ -24,7 +23,6 @@ export function CellCard({
   moltEvents = [],
   weightUnit = 'g',
   tempUnit = 'c',
-  onToggleLed,
   onRemove,
 }: CellCardProps) {
   const cardRef = useRef<HTMLDivElement>(null);
@@ -125,14 +123,7 @@ export function CellCard({
             </div>
             <div className="flex items-center gap-2">
               {/* LED Status Indicator */}
-              <button
-                type="button"
-                onClick={(event) => {
-                  event.preventDefault();
-                  onToggleLed?.();
-                }}
-                className="flex items-center gap-1 rounded px-2 py-1 text-xs text-slate-300 hover:bg-slate-800/60"
-              >
+              <div className="flex items-center gap-1 rounded px-2 py-1 text-xs text-slate-300">
                 <div
                   ref={ledRef}
                   className={`w-3 h-3 rounded-full border-2 border-cyan-400 ${
@@ -146,7 +137,7 @@ export function CellCard({
                 <span className="text-xs text-slate-300">
                   LED {cell.ledStatus === 'on' ? 'ON' : cell.ledStatus === 'blinking' ? 'BLINKING' : 'OFF'}
                 </span>
-              </button>
+              </div>
               {/* Status Badge */}
               <span
                 className={`px-2 py-1 rounded text-xs font-bold ${

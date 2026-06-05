@@ -8,7 +8,6 @@ import { storageUtils } from '@/lib/localStorage';
 import Link from 'next/link';
 import { Plus, AlertCircle, Info } from 'lucide-react';
 import { CellCard } from './cell-card';
-import { sendLedCommand } from '@/lib/esp32';
 import { SortOption } from './sort-dropdown';
 import { TemperatureUnit, WeightUnit } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -16,7 +15,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 const normalizeMacAddress = (value: string) => value.trim().toLowerCase();
 
 export function DashboardPage() {
-  const { cells, isLoading, updateCell, removeCell } = useMoltSense();
+  const { cells, isLoading, removeCell } = useMoltSense();
   const [racks, setRacks] = useState<Rack[]>([]);
   const [sets, setSets] = useState<RackSet[]>([]);
   const [moltEvents, setMoltEvents] = useState<MoltEvent[]>([]);
@@ -40,12 +39,6 @@ export function DashboardPage() {
     setWeightUnit(storageUtils.getWeightUnit());
     setTempUnit(storageUtils.getTempUnit());
   }, [cells]);
-  const handleToggleLed = (cell: Cell) => {
-    const nextStatus = cell.ledStatus === 'on' ? 'off' : 'on';
-    sendLedCommand(cell.macAddress, nextStatus);
-    updateCell(cell.id, { ledStatus: nextStatus });
-  };
-
   const getRackCells = (rackId: string): Cell[] => {
     return cells.filter((c) => c.rackId === rackId);
   };
@@ -313,7 +306,6 @@ export function DashboardPage() {
                     moltEvents={moltEvents}
                     weightUnit={weightUnit}
                     tempUnit={tempUnit}
-                    onToggleLed={() => handleToggleLed(cell)}
                     onRemove={(cellId) => removeCell(cellId)}
                   />
                 </motion.div>
