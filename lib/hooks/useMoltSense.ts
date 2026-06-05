@@ -180,6 +180,8 @@ export const useMoltSense = () => {
             const moltEventId = String(event.data?.moltEventId ?? '');
             if (moltEventId) {
               storageUtils.acknowledgeMoltEvent(moltEventId);
+            } else {
+              storageUtils.acknowledgeMoltEventsByCell(cell.id);
             }
             storageUtils.updateCell(cell.id, { ledStatus: 'off' });
           }

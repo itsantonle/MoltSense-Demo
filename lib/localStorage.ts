@@ -559,6 +559,25 @@ export const storageUtils = {
     }
   },
 
+  acknowledgeMoltEventsByCell: (cellId: string) => {
+    if (typeof window === 'undefined') return;
+    const events = storageUtils.getMoltEvents();
+    const acknowledgedAt = new Date().toISOString();
+    let updated = false;
+
+    events.forEach((event) => {
+      if (event.cellId === cellId && !event.acknowledged) {
+        event.acknowledged = true;
+        event.acknowledgedAt = acknowledgedAt;
+        updated = true;
+      }
+    });
+
+    if (updated) {
+      localStorage.setItem(STORAGE_KEYS.MOLT_EVENTS, JSON.stringify(events));
+    }
+  },
+
   // Hubs
   getHubs: (): Hub[] => {
     if (typeof window === 'undefined') return [];

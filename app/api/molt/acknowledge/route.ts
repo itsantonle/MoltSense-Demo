@@ -5,9 +5,9 @@ export async function POST(request: NextRequest) {
   try {
     const { moltEventId, macAddress } = await request.json();
 
-    if (!moltEventId || !macAddress) {
+    if (!macAddress) {
       return NextResponse.json(
-        { error: 'Missing required fields' },
+        { error: 'Missing required macAddress' },
         { status: 400 }
       );
     }
@@ -23,7 +23,10 @@ export async function POST(request: NextRequest) {
       type: 'ack',
       macAddress,
       timestamp,
-      data: { moltEventId },
+      data: {
+        ...(moltEventId ? { moltEventId } : {}),
+        acknowledgedAll: !moltEventId,
+      },
     });
 
     // Return acknowledgement
@@ -31,8 +34,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         success: true,
-        message: 'Molt event acknowledged',
+        message: moltEventId
+          ? 'Molt event acknowledged'
+          : 'All molt events for the device acknowledged',
         moltEventId,
+        acknowledgedAll: !moltEventId,
         acknowledgedAt: timestamp,
       },
       { status: 200 }

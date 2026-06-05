@@ -30,6 +30,10 @@ export async function POST(request: NextRequest) {
     const config = esp32Store.resolveConfig(macAddress);
     const previousDevice = esp32Store.getDevice(macAddress);
     const numericConductivity = Number(conductivity);
+    const actualLedStatus =
+      ledStatus === 'on' || ledStatus === 'off' || ledStatus === 'blinking'
+        ? ledStatus
+        : previousDevice?.ledStatus ?? 'off';
     const hasConductivity = Number.isFinite(numericConductivity);
     const telemetryIntervalMs = Math.max(config.moistureIntervalMs || 0, 1000);
     const previousTelemetryAt = previousDevice?.lastTelemetryAt
@@ -60,14 +64,14 @@ export async function POST(request: NextRequest) {
       telemetryIntervalMs,
     });
 
-    let device = esp32Store.upsertDevice(macAddress, {
+    esp32Store.upsertDevice(macAddress, {
       lastSeen: timestamp,
       signalStrength,
       lastConductivity: hasConductivity
         ? numericConductivity
         : previousDevice?.lastConductivity,
-      ledStatus: ledStatus || previousDevice?.ledStatus,
-    })
+      ledStatus: actualLedStatus,
+    });
 
     let telemetryEventId: number | undefined;
     let moltEventId: string | undefined;
@@ -83,21 +87,20 @@ export async function POST(request: NextRequest) {
           temperature: Number.isFinite(temperature) ? temperature : mockTemperature(),
           humidity: Number.isFinite(humidity) ? humidity : mockHumidity(),
           signalStrength,
-          ledStatus: inferredMolt ? 'on' : device.ledStatus,
+          ledStatus: actualLedStatus,
           moltDetected: inferredMolt,
           moltEventId: inferredMoltEventId,
         },
       });
       telemetryEventId = telemetryEvent.id;
-      device = esp32Store.upsertDevice(macAddress, {
+      esp32Store.upsertDevice(macAddress, {
         lastTelemetryAt: timestamp,
       });
     }
 
     if (inferredMolt) {
       moltEventId = inferredMoltEventId;
-      device = esp32Store.upsertDevice(macAddress, {
-        ledStatus: 'on',
+      esp32Store.upsertDevice(macAddress, {
         lastMoltAt: timestamp,
       });
       esp32Store.addEvent({
@@ -117,7 +120,6 @@ export async function POST(request: NextRequest) {
 
     if (errorDetected) {
       esp32Store.upsertDevice(macAddress, {
-        ledStatus: 'blinking',
         errorState: true,
       });
       esp32Store.addEvent({
@@ -141,7 +143,7 @@ export async function POST(request: NextRequest) {
         moltEventId,
         moltDetected: inferredMolt,
         config,
-        ledConfig: { status: device.ledStatus },
+        ledConfig: { status: actualLedStatus },
       },
       {
         status: 200,
