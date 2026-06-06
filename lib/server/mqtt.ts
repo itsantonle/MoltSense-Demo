@@ -3,9 +3,9 @@ import type { Esp32Config } from '@/lib/localStorage';
 
 const MQTT_BROKER_URL =
   process.env.HIVEMQ_MQTT_URL ??
-  'mqtts';
-const MQTT_USERNAME = process.env.HIVEMQ_MQTT_USERNAME ?? 'username';
-const MQTT_PASSWORD = process.env.HIVEMQ_MQTT_PASSWORD ?? 'password';
+  'mqtts://2178b9fe17a0404da089a93620721834.s1.eu.hivemq.cloud:8883';
+const MQTT_USERNAME = process.env.HIVEMQ_MQTT_USERNAME ?? 'moltsense';
+const MQTT_PASSWORD = process.env.HIVEMQ_MQTT_PASSWORD ?? '!Moltsense123';
 
 type PublishOptions = {
   retain?: boolean;
