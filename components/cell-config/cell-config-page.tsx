@@ -4,11 +4,12 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { ArrowLeft, RefreshCw, Save, Settings2 } from 'lucide-react';
+import { ArrowLeft, RefreshCw, RotateCcw, Save, Settings2 } from 'lucide-react';
 import { useMoltSense } from '@/lib/hooks/useMoltSense';
-import { updateEsp32Config } from '@/lib/esp32';
+import { requestEsp32ConfigSnapshot, updateEsp32Config } from '@/lib/esp32';
 import { storageUtils, Esp32Config, Rack } from '@/lib/localStorage';
 import { DurationField } from '@/components/config/duration-field';
+import { ConfirmDialog } from '@/components/shared/confirm-dialog';
 import {
   CONDUCTIVITY_UNIT,
   MOISTURE_UNIT,
@@ -68,6 +69,17 @@ const patchFromDraft = (draft: ConfigDraft): Partial<Esp32Config> => {
   return patch;
 };
 
+const draftFromConfig = (config: Esp32Config): ConfigDraft => ({
+  conductivityThresholdStart: String(config.conductivityThresholdStart),
+  conductivityThresholdEnd: String(config.conductivityThresholdEnd),
+  moistureThresholdLow: String(config.moistureThresholdLow),
+  moistureThresholdHigh: String(config.moistureThresholdHigh),
+  moltCooldownMs: String(config.moltCooldownMs),
+  moistureIntervalMs: String(config.moistureIntervalMs),
+  conductivityIntervalMs: String(config.conductivityIntervalMs),
+  errorAfterMs: String(config.errorAfterMs),
+});
+
 const parseNumber = (value: string, fallback: number) => {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : fallback;
@@ -91,10 +103,21 @@ export function CellConfigPage() {
   const [racks, setRacks] = useState<Rack[]>([]);
   const [draft, setDraft] = useState<ConfigDraft>(defaultDraft);
   const [saving, setSaving] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<'save' | 'reset' | null>(null);
+  const [actionLockUntil, setActionLockUntil] = useState(0);
 
   useEffect(() => {
     setRacks(storageUtils.getRacks());
   }, [cells.length, sets.length]);
+
+  useEffect(() => {
+    if (actionLockUntil <= Date.now()) return;
+    const timeout = window.setTimeout(() => setActionLockUntil(0), actionLockUntil - Date.now());
+    return () => window.clearTimeout(timeout);
+  }, [actionLockUntil]);
+
+  const isActionLocked = actionLockUntil > Date.now();
 
   const cell = useMemo(
     () => cells.find((item) => item.id === cellId),
@@ -150,6 +173,40 @@ export function CellConfigPage() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const syncCellValues = async () => {
+    if (!cell) return;
+    setSyncing(true);
+    try {
+      const response = await requestEsp32ConfigSnapshot(cell.macAddress);
+      setDraft(draftFromConfig(response.config));
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  const requestSave = () => {
+    if (saving || isActionLocked) return;
+    setConfirmAction('save');
+  };
+
+  const requestReset = () => {
+    if (saving || isActionLocked) return;
+    setConfirmAction('reset');
+  };
+
+  const runConfirmedAction = async () => {
+    const action = confirmAction;
+    if (!action) return;
+    setConfirmAction(null);
+    setActionLockUntil(Date.now() + 1500);
+
+    if (action === 'save') {
+      await saveCellConfig();
+      return;
+    }
+    await resetCellConfig();
   };
 
   if (isLoading) {
@@ -274,18 +331,26 @@ export function CellConfigPage() {
                 the values you want this one cell to override.
               </p>
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <button
-                onClick={saveCellConfig}
-                disabled={saving}
+                onClick={syncCellValues}
+                disabled={syncing || saving || isActionLocked}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-700/50 text-slate-200 border border-slate-600/50 hover:border-slate-500/60 transition-colors disabled:opacity-60"
+              >
+                <RotateCcw className="w-4 h-4" />
+                {syncing ? 'Syncing...' : 'Sync Cell Data'}
+              </button>
+              <button
+                onClick={requestSave}
+                disabled={saving || syncing || isActionLocked}
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-cyan-500/20 text-cyan-200 border border-cyan-500/40 hover:border-cyan-500/60 transition-colors disabled:opacity-60"
               >
                 <Save className="w-4 h-4" />
                 {saving ? 'Saving...' : 'Save Override'}
               </button>
               <button
-                onClick={resetCellConfig}
-                disabled={saving}
+                onClick={requestReset}
+                disabled={saving || syncing || isActionLocked}
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-700/50 text-slate-200 border border-slate-600/50 hover:border-slate-500/60 transition-colors disabled:opacity-60"
               >
                 <RefreshCw className="w-4 h-4" />
@@ -411,6 +476,20 @@ export function CellConfigPage() {
           </div>
         )}
       </div>
+
+      <ConfirmDialog
+        open={confirmAction !== null}
+        title={confirmAction === 'save' ? 'Save cell override?' : 'Reset cell override?'}
+        description={
+          confirmAction === 'save'
+            ? 'This will write the current cell override and sync it to the ESP32.'
+            : 'This will clear the cell override and re-sync the inherited settings.'
+        }
+        confirmLabel="Proceed"
+        cancelLabel="Cancel"
+        onConfirm={runConfirmedAction}
+        onCancel={() => setConfirmAction(null)}
+      />
     </div>
   );
 }

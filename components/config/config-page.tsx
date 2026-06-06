@@ -6,6 +6,7 @@ import { CheckCircle2, Layers, RefreshCw, Save, Settings2, Zap } from 'lucide-re
 import { useMoltSense } from '@/lib/hooks/useMoltSense';
 import { updateEsp32Config } from '@/lib/esp32';
 import { storageUtils, Esp32Config, Rack, Cell, RackSet } from '@/lib/localStorage';
+import { ConfirmDialog } from '@/components/shared/confirm-dialog';
 import { DurationField } from '@/components/config/duration-field';
 import {
   applyWaterPreset,
@@ -159,10 +160,25 @@ export function ConfigPage() {
   const [setDrafts, setSetDrafts] = useState<Record<string, ConfigDraft>>({});
   const [savingGlobal, setSavingGlobal] = useState(false);
   const [savingSets, setSavingSets] = useState<Record<string, boolean>>({});
+  const [confirmAction, setConfirmAction] = useState<
+    | { kind: 'save-global' }
+    | { kind: 'save-set'; setId: string; setName: string }
+    | { kind: 'reset-set'; setId: string; setName: string }
+    | null
+  >(null);
+  const [actionLockUntil, setActionLockUntil] = useState(0);
 
   useEffect(() => {
     setRacks(storageUtils.getRacks());
   }, [cells.length, sets.length]);
+
+  useEffect(() => {
+    if (actionLockUntil <= Date.now()) return;
+    const timeout = window.setTimeout(() => setActionLockUntil(0), actionLockUntil - Date.now());
+    return () => window.clearTimeout(timeout);
+  }, [actionLockUntil]);
+
+  const isActionLocked = actionLockUntil > Date.now();
 
   const globalConfig = useMemo(
     () => normalizeWindow(normalizeDraft(globalDraft, storageUtils.getEsp32Config())),
@@ -214,6 +230,38 @@ export function ConfigPage() {
     } finally {
       setSavingGlobal(false);
     }
+  };
+
+  const requestGlobalSave = () => {
+    if (savingGlobal || isActionLocked) return;
+    setConfirmAction({ kind: 'save-global' });
+  };
+
+  const requestSetSave = (setId: string, setName: string) => {
+    if (savingSets[setId] || isActionLocked) return;
+    setConfirmAction({ kind: 'save-set', setId, setName });
+  };
+
+  const requestSetReset = (setId: string, setName: string) => {
+    if (savingSets[setId] || isActionLocked) return;
+    setConfirmAction({ kind: 'reset-set', setId, setName });
+  };
+
+  const runConfirmedAction = async () => {
+    const action = confirmAction;
+    if (!action) return;
+    setConfirmAction(null);
+    setActionLockUntil(Date.now() + 1500);
+
+    if (action.kind === 'save-global') {
+      await saveGlobalConfig();
+      return;
+    }
+    if (action.kind === 'save-set') {
+      await saveSetConfig(action.setId);
+      return;
+    }
+    await resetSetConfig(action.setId);
   };
 
   const saveSetConfig = async (setId: string) => {
@@ -332,8 +380,8 @@ export function ConfigPage() {
               </p>
             </div>
             <button
-              onClick={saveGlobalConfig}
-              disabled={savingGlobal}
+              onClick={requestGlobalSave}
+              disabled={savingGlobal || isActionLocked}
               className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-cyan-500/20 text-cyan-200 border border-cyan-500/40 hover:border-cyan-500/60 transition-colors disabled:opacity-60"
             >
               <Save className="w-4 h-4" />
@@ -681,16 +729,16 @@ export function ConfigPage() {
 
                   <div className="flex flex-wrap gap-2 mt-4">
                     <button
-                      onClick={() => saveSetConfig(set.id)}
-                      disabled={savingSets[set.id]}
+                      onClick={() => requestSetSave(set.id, set.name)}
+                      disabled={savingSets[set.id] || isActionLocked}
                       className="inline-flex items-center gap-2 px-3 py-2 rounded bg-cyan-500/20 text-cyan-200 border border-cyan-500/40 text-sm disabled:opacity-60"
                     >
                       <Save className="w-4 h-4" />
                       {savingSets[set.id] ? 'Saving...' : 'Save Set Override'}
                     </button>
                     <button
-                      onClick={() => resetSetConfig(set.id)}
-                      disabled={savingSets[set.id]}
+                      onClick={() => requestSetReset(set.id, set.name)}
+                      disabled={savingSets[set.id] || isActionLocked}
                       className="inline-flex items-center gap-2 px-3 py-2 rounded bg-slate-700/50 text-slate-200 border border-slate-600/50 text-sm disabled:opacity-60"
                     >
                       <RefreshCw className="w-4 h-4" />
@@ -721,6 +769,28 @@ export function ConfigPage() {
           )}
         </motion.section>
       </div>
+
+      <ConfirmDialog
+        open={confirmAction !== null}
+        title={
+          confirmAction?.kind === 'save-global'
+            ? 'Sync global settings?'
+            : confirmAction?.kind === 'save-set'
+              ? `Save override for ${confirmAction.setName}?`
+              : 'Reset set override?'
+        }
+        description={
+          confirmAction?.kind === 'save-global'
+            ? 'This will push the current global settings to every connected device.'
+            : confirmAction?.kind === 'save-set'
+              ? 'This will save the set override and sync the affected devices.'
+              : 'This will remove the set override and re-sync the affected devices.'
+        }
+        confirmLabel="Proceed"
+        cancelLabel="Cancel"
+        onConfirm={runConfirmedAction}
+        onCancel={() => setConfirmAction(null)}
+      />
     </div>
   );
 }

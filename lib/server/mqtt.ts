@@ -13,6 +13,11 @@ type PublishOptions = {
 
 type MqttJsonPayload = Record<string, unknown>;
 
+type MqttSubscriptionResult = {
+  topic: string;
+  payload: MqttJsonPayload;
+};
+
 const normalizeMacAddress = (macAddress: string) => macAddress.trim().toLowerCase();
 
 const createClient = () => {
@@ -32,6 +37,13 @@ export const publishMqttJson = async (
   payload: MqttJsonPayload,
   options: PublishOptions = {}
 ) => {
+  console.log('[mqtt][publish] sending', {
+    topic,
+    qos: options.qos ?? 1,
+    retain: options.retain ?? false,
+    payloadKeys: Object.keys(payload),
+  });
+
   await new Promise<void>((resolve, reject) => {
     const client = createClient();
     let settled = false;
@@ -41,8 +53,13 @@ export const publishMqttJson = async (
       settled = true;
       client.end(true, {}, () => {
         if (error) {
+          console.error('[mqtt][publish] failed', {
+            topic,
+            error: error.message,
+          });
           reject(error);
         } else {
+          console.log('[mqtt][publish] sent', { topic });
           resolve();
         }
       });
@@ -78,12 +95,99 @@ export const publishMqttJson = async (
   });
 };
 
+export const requestMqttJson = async (
+  requestTopic: string,
+  responseTopic: string,
+  payload: MqttJsonPayload,
+  options: PublishOptions & { timeoutMs?: number } = {}
+) => {
+  const timeoutMs = options.timeoutMs ?? 10_000;
+  console.log('[mqtt][request] sending', {
+    requestTopic,
+    responseTopic,
+    timeoutMs,
+  });
+
+  return await new Promise<MqttSubscriptionResult>((resolve, reject) => {
+    const client = createClient();
+    let settled = false;
+    let timeoutHandle: NodeJS.Timeout | undefined;
+
+    const finish = (error?: Error, result?: MqttSubscriptionResult) => {
+      if (settled) return;
+      settled = true;
+      if (timeoutHandle) clearTimeout(timeoutHandle);
+      client.end(true, {}, () => {
+        if (error) {
+          console.error('[mqtt][request] failed', {
+            requestTopic,
+            responseTopic,
+            error: error.message,
+          });
+          reject(error);
+        } else {
+          console.log('[mqtt][request] received response', {
+            responseTopic,
+            topic: result?.topic,
+          });
+          resolve(result as MqttSubscriptionResult);
+        }
+      });
+    };
+
+    client.on('connect', () => {
+      client.subscribe(responseTopic, { qos: options.qos ?? 1 }, (subscribeError) => {
+        if (subscribeError) {
+          finish(subscribeError);
+          return;
+        }
+
+        client.publish(
+          requestTopic,
+          JSON.stringify(payload),
+          {
+            qos: options.qos ?? 1,
+            retain: options.retain ?? false,
+          },
+          (publishError) => {
+            if (publishError) {
+              finish(publishError);
+            }
+          }
+        );
+      });
+    });
+
+    client.on('message', (topic, message) => {
+      if (topic !== responseTopic) return;
+      try {
+        const parsed = JSON.parse(message.toString()) as MqttJsonPayload;
+        finish(undefined, { topic, payload: parsed });
+      } catch (error) {
+        finish(error instanceof Error ? error : new Error('Failed to parse MQTT response'));
+      }
+    });
+
+    client.on('error', (error) => {
+      finish(error);
+    });
+
+    timeoutHandle = setTimeout(() => {
+      finish(new Error(`Timed out waiting for MQTT response on ${responseTopic}`));
+    }, timeoutMs);
+  });
+};
+
 export const publishEsp32Config = async (
   macAddress: string,
   config: Esp32Config,
   metadata: Record<string, unknown> = {}
 ) => {
   const normalizedMac = normalizeMacAddress(macAddress);
+  console.log('[mqtt][config] publishing ESP32 config', {
+    macAddress: normalizedMac,
+    metadata,
+  });
   await publishMqttJson(
     `esp32/${normalizedMac}/config`,
     {
@@ -107,6 +211,11 @@ export const publishEsp32FirmwareUpdate = async (
   metadata: Record<string, unknown> = {}
 ) => {
   const normalizedMac = normalizeMacAddress(macAddress);
+  console.log('[mqtt][ota] publishing firmware update', {
+    macAddress: normalizedMac,
+    metadata,
+    payload,
+  });
   await publishMqttJson(
     `esp32/${normalizedMac}/ota`,
     {
@@ -117,4 +226,28 @@ export const publishEsp32FirmwareUpdate = async (
     },
     { retain: false, qos: 1 }
   );
+};
+
+export const requestEsp32ConfigSnapshot = async (
+  macAddress: string,
+  metadata: Record<string, unknown> = {},
+  timeoutMs = 10_000
+) => {
+  const normalizedMac = normalizeMacAddress(macAddress);
+  const requestTopic = `esp32/${normalizedMac}/config/request`;
+  const responseTopic = `esp32/${normalizedMac}/config/state`;
+
+  const response = await requestMqttJson(
+    requestTopic,
+    responseTopic,
+    {
+      ...metadata,
+      macAddress: normalizedMac,
+      requestedAt: new Date().toISOString(),
+      request: 'config-snapshot',
+    },
+    { qos: 1, retain: false, timeoutMs }
+  );
+
+  return response.payload;
 };

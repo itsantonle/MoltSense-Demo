@@ -34,3 +34,24 @@ export const updateEsp32Config = async (
     console.warn('Failed to update ESP32 config', error);
   }
 };
+
+export const requestEsp32ConfigSnapshot = async (macAddress: string) => {
+  const requestRoute = '/api/esp32/config/request' as string;
+  const response = await fetch(requestRoute, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ macAddress }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.details || error.error || 'Failed to request ESP32 config snapshot');
+  }
+
+  return (await response.json()) as {
+    success: true;
+    macAddress: string;
+    payload: Record<string, unknown>;
+    config: Esp32Config;
+  };
+};
