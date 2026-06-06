@@ -291,7 +291,7 @@ export function CellConfigPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="rounded-lg border border-slate-700/60 bg-slate-900/50 p-4">
-              <p className="text-xs text-slate-400 mb-2">Molt trigger band</p>
+              <p className="text-xs text-slate-400 mb-2">Conductivity hysteresis window</p>
               <p className="text-lg font-semibold text-slate-100">
                 {formatConductivityWindow(effectiveConfig)}
               </p>
@@ -362,7 +362,7 @@ export function CellConfigPage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <div className="rounded-lg border border-slate-700/60 bg-slate-950/40 p-4">
               <div className="flex items-center justify-between gap-2 mb-1">
-                <p className="text-xs text-slate-400">Molt trigger band</p>
+                <p className="text-xs text-slate-400">Conductivity hysteresis window</p>
                 <span className="text-[11px] text-cyan-300">{CONDUCTIVITY_UNIT}</span>
               </div>
               <div className="flex items-center gap-2">

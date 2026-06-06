@@ -410,10 +410,10 @@ export function ConfigPage() {
               <div className="rounded-lg border border-slate-700/60 bg-slate-900/50 p-4">
                 <div className="flex items-center justify-between gap-3 mb-2">
                   <div>
-                    <p className="text-xs text-slate-400">Molt trigger band</p>
+                    <p className="text-xs text-slate-400">Conductivity hysteresis window</p>
                     <p className="text-[11px] text-slate-500">
-                      Fire when conductivity rises above the high threshold and re-arm once it
-                      falls to the low threshold.
+                      Molting triggers at the upper number, then waits until the reading drops to
+                      the lower number before it can trigger again.
                     </p>
                   </div>
                   <span className="text-[11px] text-cyan-300">{CONDUCTIVITY_UNIT}</span>
@@ -590,7 +590,7 @@ export function ConfigPage() {
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
                     <div className="rounded-lg border border-slate-700/60 bg-slate-950/40 p-3">
                       <div className="flex items-center justify-between gap-2 mb-1">
-                        <p className="text-[11px] text-slate-500">Molt trigger band</p>
+                        <p className="text-[11px] text-slate-500">Conductivity hysteresis window</p>
                         <span className="text-[11px] text-cyan-300">{CONDUCTIVITY_UNIT}</span>
                       </div>
                       <div className="flex items-center gap-2">

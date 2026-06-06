@@ -93,7 +93,7 @@ export const formatConductivityWindow = (config: Pick<
 >) => {
   const trigger = Math.max(config.conductivityThresholdStart, config.conductivityThresholdEnd);
   const reset = Math.min(config.conductivityThresholdStart, config.conductivityThresholdEnd);
-  return `Trigger >= ${trigger} ${CONDUCTIVITY_UNIT}, reset <= ${reset} ${CONDUCTIVITY_UNIT}`;
+  return `Molt triggers when conductivity reaches ${trigger} ${CONDUCTIVITY_UNIT} or higher, then it will not trigger again until conductivity falls to ${reset} ${CONDUCTIVITY_UNIT} or lower and rises back up.`;
 };
 
 export const formatMoistureWindow = (config: Pick<
