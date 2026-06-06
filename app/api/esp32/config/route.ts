@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { esp32Store } from '@/app/api/esp32/store';
+import { publishEsp32Config } from '@/lib/server/mqtt';
 
 const allowedKeys = new Set([
   'conductivityThresholdStart',
@@ -56,18 +57,50 @@ export async function POST(request: NextRequest) {
 
     if (scope === 'device' && macAddress) {
       esp32Store.setDeviceConfig(macAddress, filteredUpdates);
+      const config = esp32Store.resolveConfig(macAddress);
+      let mqttPublished = false;
+      let mqttError: string | undefined;
+      try {
+        await publishEsp32Config(macAddress, config, {
+          scope: 'device',
+          source: 'web-config',
+        });
+        mqttPublished = true;
+      } catch (error) {
+        mqttError = error instanceof Error ? error.message : 'Failed to publish MQTT config';
+      }
       return NextResponse.json({
         success: true,
         scope: 'device',
         macAddress,
-        config: esp32Store.resolveConfig(macAddress),
+        config,
         overrides: esp32Store.getDeviceConfig(macAddress),
+        mqttPublished,
+        ...(mqttError ? { mqttError } : {}),
       });
     }
 
     if (scope === 'all') {
       esp32Store.setConfig(filteredUpdates);
       const store = esp32Store.get();
+      const publishResults = await Promise.all(
+        Object.keys(store.devices).map(async (deviceMac) => {
+          const config = esp32Store.resolveConfig(deviceMac);
+          try {
+            await publishEsp32Config(deviceMac, config, {
+              scope: 'all',
+              source: 'web-config',
+            });
+            return { macAddress: deviceMac, mqttPublished: true };
+          } catch (error) {
+            return {
+              macAddress: deviceMac,
+              mqttPublished: false,
+              mqttError: error instanceof Error ? error.message : 'Failed to publish MQTT config',
+            };
+          }
+        })
+      );
       Object.keys(store.devices).forEach((deviceMac) => {
         esp32Store.setDeviceConfig(deviceMac, filteredUpdates);
       });
@@ -75,6 +108,7 @@ export async function POST(request: NextRequest) {
         success: true,
         scope: 'all',
         config: esp32Store.getConfig(),
+        publishResults,
       });
     }
 

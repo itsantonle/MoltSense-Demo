@@ -6,7 +6,7 @@ import { Cell, MoltEvent } from '@/lib/localStorage';
 import { formatTemperature, formatWeight, TemperatureUnit, WeightUnit } from '@/lib/utils';
 import { Gauge, Droplets, Thermometer, Wind, Trash2, AlertCircle } from 'lucide-react';
 import gsap from 'gsap';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 
 const normalizeMacAddress = (value: string) => value.trim().toLowerCase();
 
@@ -27,7 +27,12 @@ export function CellCard({
 }: CellCardProps) {
   const cardRef = useRef<HTMLDivElement>(null);
   const ledRef = useRef<HTMLDivElement>(null);
-  const [showAlert, setShowAlert] = useState(false);
+  const moistureAlertLabel =
+    cell.moistureState === 'low'
+      ? 'Low moisture detected'
+      : cell.moistureState === 'high'
+      ? 'High moisture detected'
+      : null;
 
   // LED animation
   useEffect(() => {
@@ -54,15 +59,6 @@ export function CellCard({
       });
     }
   }, [cell.ledStatus]);
-
-  // Moisture alert animation
-  useEffect(() => {
-    if (cell.moisture > 75) {
-      setShowAlert(true);
-      const timer = setTimeout(() => setShowAlert(false), 5000);
-      return () => clearTimeout(timer);
-    }
-  }, [cell.moisture]);
 
   const statusColors = {
     active: 'text-green-400 bg-green-500/10',
@@ -138,6 +134,17 @@ export function CellCard({
                   LED {cell.ledStatus === 'on' ? 'ON' : cell.ledStatus === 'blinking' ? 'BLINKING' : 'OFF'}
                 </span>
               </div>
+              {moistureAlertLabel && (
+                <span
+                  className={`px-2 py-1 rounded text-[10px] font-bold border ${
+                    cell.moistureState === 'low'
+                      ? 'border-amber-500/40 text-amber-300 bg-amber-500/10'
+                      : 'border-cyan-500/40 text-cyan-300 bg-cyan-500/10'
+                  }`}
+                >
+                  {cell.moistureState === 'low' ? 'LOW MOISTURE' : 'HIGH MOISTURE'}
+                </span>
+              )}
               {/* Status Badge */}
               <span
                 className={`px-2 py-1 rounded text-xs font-bold ${
@@ -155,15 +162,19 @@ export function CellCard({
           </div>
 
           {/* Alert Banner */}
-          {showAlert && (
+          {moistureAlertLabel && (
             <motion.div
               initial={{ opacity: 0, y: -5 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -5 }}
-              className="mb-4 p-3 rounded bg-amber-500/20 border border-amber-500/50 text-amber-300 text-sm flex items-center gap-2"
+              className={`mb-4 p-3 rounded border text-sm flex items-center gap-2 ${
+                cell.moistureState === 'low'
+                  ? 'bg-amber-500/20 border-amber-500/50 text-amber-300'
+                  : 'bg-cyan-500/20 border-cyan-500/50 text-cyan-300'
+              }`}
             >
               <AlertCircle className="w-4 h-4" />
-              High moisture detected
+              {moistureAlertLabel}
             </motion.div>
           )}
 

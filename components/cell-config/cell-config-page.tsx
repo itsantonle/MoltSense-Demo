@@ -8,6 +8,14 @@ import { ArrowLeft, RefreshCw, Save, Settings2 } from 'lucide-react';
 import { useMoltSense } from '@/lib/hooks/useMoltSense';
 import { updateEsp32Config } from '@/lib/esp32';
 import { storageUtils, Esp32Config, Rack } from '@/lib/localStorage';
+import { DurationField } from '@/components/config/duration-field';
+import {
+  CONDUCTIVITY_UNIT,
+  MOISTURE_UNIT,
+  formatConductivityWindow,
+  formatDuration,
+  formatMoistureWindow,
+} from '@/lib/esp32-config-ui';
 
 type ConfigDraft = {
   conductivityThresholdStart: string;
@@ -60,6 +68,11 @@ const patchFromDraft = (draft: ConfigDraft): Partial<Esp32Config> => {
   return patch;
 };
 
+const parseNumber = (value: string, fallback: number) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
+
 const defaultDraft: ConfigDraft = {
   conductivityThresholdStart: '',
   conductivityThresholdEnd: '',
@@ -69,12 +82,6 @@ const defaultDraft: ConfigDraft = {
   moistureIntervalMs: '',
   conductivityIntervalMs: '',
   errorAfterMs: '',
-};
-
-const formatMs = (value: number) => {
-  if (value >= 60_000) return `${Math.round(value / 60_000)} min`;
-  if (value >= 1000) return `${Math.round(value / 1000)} sec`;
-  return `${value} ms`;
 };
 
 export function CellConfigPage() {
@@ -197,7 +204,7 @@ export function CellConfigPage() {
             </div>
             <div className="flex flex-wrap gap-2">
               <span className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-xs text-cyan-200">
-                Global {formatMs(globalConfig.moltCooldownMs)}
+                Global cooldown {formatDuration(globalConfig.moltCooldownMs)}
               </span>
               {parentSet && (
                 <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs text-amber-200">
@@ -227,28 +234,28 @@ export function CellConfigPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="rounded-lg border border-slate-700/60 bg-slate-900/50 p-4">
-              <p className="text-xs text-slate-400 mb-2">Molting at (conductivity)</p>
+              <p className="text-xs text-slate-400 mb-2">Molt trigger band</p>
               <p className="text-lg font-semibold text-slate-100">
-                {effectiveConfig.conductivityThresholdStart} to {effectiveConfig.conductivityThresholdEnd}
+                {formatConductivityWindow(effectiveConfig)}
               </p>
             </div>
             <div className="rounded-lg border border-slate-700/60 bg-slate-900/50 p-4">
-              <p className="text-xs text-slate-400 mb-2">Low / High moisture</p>
+              <p className="text-xs text-slate-400 mb-2">Moisture alert band</p>
               <p className="text-lg font-semibold text-slate-100">
-                {effectiveConfig.moistureThresholdLow} / {effectiveConfig.moistureThresholdHigh}
+                {formatMoistureWindow(effectiveConfig)}
               </p>
             </div>
             <div className="rounded-lg border border-slate-700/60 bg-slate-900/50 p-4">
               <p className="text-xs text-slate-400 mb-2">Molt cooldown</p>
               <p className="text-lg font-semibold text-slate-100">
-                {formatMs(effectiveConfig.moltCooldownMs)}
+                {formatDuration(effectiveConfig.moltCooldownMs)}
               </p>
             </div>
             <div className="rounded-lg border border-slate-700/60 bg-slate-900/50 p-4">
               <p className="text-xs text-slate-400 mb-2">Sensor timing</p>
               <p className="text-lg font-semibold text-slate-100">
-                Moisture {formatMs(effectiveConfig.moistureIntervalMs)} · Conductivity{' '}
-                {formatMs(effectiveConfig.conductivityIntervalMs)}
+                Moisture {formatDuration(effectiveConfig.moistureIntervalMs)} · Conductivity{' '}
+                {formatDuration(effectiveConfig.conductivityIntervalMs)}
               </p>
             </div>
           </div>
@@ -289,7 +296,10 @@ export function CellConfigPage() {
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <div className="rounded-lg border border-slate-700/60 bg-slate-950/40 p-4">
-              <p className="text-xs text-slate-400 mb-2">Molting at (conductivity)</p>
+              <div className="flex items-center justify-between gap-2 mb-1">
+                <p className="text-xs text-slate-400">Molt trigger band</p>
+                <span className="text-[11px] text-cyan-300">{CONDUCTIVITY_UNIT}</span>
+              </div>
               <div className="flex items-center gap-2">
                 <input
                   type="number"
@@ -320,7 +330,10 @@ export function CellConfigPage() {
             </div>
 
             <div className="rounded-lg border border-slate-700/60 bg-slate-950/40 p-4">
-              <p className="text-xs text-slate-400 mb-2">Low / High moisture</p>
+              <div className="flex items-center justify-between gap-2 mb-1">
+                <p className="text-xs text-slate-400">Moisture alert band</p>
+                <span className="text-[11px] text-cyan-300">{MOISTURE_UNIT}</span>
+              </div>
               <div className="flex items-center gap-2">
                 <input
                   type="number"
@@ -350,51 +363,44 @@ export function CellConfigPage() {
               </div>
             </div>
 
-            <div className="rounded-lg border border-slate-700/60 bg-slate-950/40 p-4">
-              <p className="text-xs text-slate-400 mb-2">Molt cooldown</p>
-              <input
-                type="number"
-                value={draft.moltCooldownMs}
-                placeholder={String(effectiveConfig.moltCooldownMs)}
-                onChange={(event) =>
-                  setDraft((prev) => ({ ...prev, moltCooldownMs: event.target.value }))
-                }
-                className="w-full rounded bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-slate-100"
-              />
-            </div>
+            <DurationField
+              label="Molt cooldown"
+              helperText="Wait before this cell can alert again."
+              valueMs={parseNumber(draft.moltCooldownMs, effectiveConfig.moltCooldownMs)}
+              onChange={(ms) => setDraft((prev) => ({ ...prev, moltCooldownMs: String(ms) }))}
+              minValueMs={0}
+            />
 
-            <div className="rounded-lg border border-slate-700/60 bg-slate-950/40 p-4">
-              <p className="text-xs text-slate-400 mb-2">Sensor timing</p>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                <input
-                  type="number"
-                  value={draft.moistureIntervalMs}
-                  placeholder={String(effectiveConfig.moistureIntervalMs)}
-                  onChange={(event) =>
-                    setDraft((prev) => ({ ...prev, moistureIntervalMs: event.target.value }))
-                  }
-                  className="w-full rounded bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-slate-100"
-                />
-                <input
-                  type="number"
-                  value={draft.conductivityIntervalMs}
-                  placeholder={String(effectiveConfig.conductivityIntervalMs)}
-                  onChange={(event) =>
-                    setDraft((prev) => ({ ...prev, conductivityIntervalMs: event.target.value }))
-                  }
-                  className="w-full rounded bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-slate-100"
-                />
-                <input
-                  type="number"
-                  value={draft.errorAfterMs}
-                  placeholder={String(effectiveConfig.errorAfterMs)}
-                  onChange={(event) =>
-                    setDraft((prev) => ({ ...prev, errorAfterMs: event.target.value }))
-                  }
-                  className="w-full rounded bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-slate-100"
-                />
-              </div>
-            </div>
+            <DurationField
+              label="Moisture check every"
+              helperText="How often this cell reports the mapped moisture percentage."
+              valueMs={parseNumber(draft.moistureIntervalMs, effectiveConfig.moistureIntervalMs)}
+              onChange={(ms) =>
+                setDraft((prev) => ({ ...prev, moistureIntervalMs: String(ms) }))
+              }
+              minValueMs={1000}
+            />
+
+            <DurationField
+              label="Conductivity check every"
+              helperText="How often this cell samples the conductivity sensor."
+              valueMs={parseNumber(
+                draft.conductivityIntervalMs,
+                effectiveConfig.conductivityIntervalMs
+              )}
+              onChange={(ms) =>
+                setDraft((prev) => ({ ...prev, conductivityIntervalMs: String(ms) }))
+              }
+              minValueMs={250}
+            />
+
+            <DurationField
+              label="Sensor fault timeout"
+              helperText="If conductivity stays at zero this long, the cell enters error mode."
+              valueMs={parseNumber(draft.errorAfterMs, effectiveConfig.errorAfterMs)}
+              onChange={(ms) => setDraft((prev) => ({ ...prev, errorAfterMs: String(ms) }))}
+              minValueMs={1000}
+            />
           </div>
         </motion.section>
 

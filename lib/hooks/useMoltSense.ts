@@ -60,6 +60,27 @@ export const useMoltSense = () => {
         const existingEvents = storageUtils.getMoltEvents();
         const existingEventIds = new Set(existingEvents.map((event) => event.id));
         const nextAlerts = storageUtils.getAlerts();
+        const createMoistureAlert = (
+          cellId: string,
+          macAddress: string,
+          timestamp: string,
+          state: 'low' | 'high'
+        ) => {
+          const alert: Alert = {
+            id: `moisture-${cellId}-${state}-${timestamp}`,
+            cellId,
+            macAddress,
+            type: state === 'low' ? 'moisture_low' : 'moisture_high',
+            message:
+              state === 'low'
+                ? 'Low moisture detected in cell'
+                : 'High moisture detected in cell',
+            timestamp,
+            read: false,
+          };
+          nextAlerts.push(alert);
+          storageUtils.addAlert(alert);
+        };
 
         const applyMoltToCell = (
           cellId: string,
@@ -143,12 +164,25 @@ export const useMoltSense = () => {
               temperature: Number(event.data?.temperature ?? cell.temperature),
               humidity: Number(event.data?.humidity ?? cell.humidity),
               ledStatus: (event.data?.ledStatus as Cell['ledStatus']) ?? cell.ledStatus,
+              moistureState:
+                (event.data?.moistureState as Cell['moistureState']) ?? cell.moistureState,
             });
 
             const telemetryMoltDetected = Boolean(event.data?.moltDetected);
             const telemetryMoltEventId = String(event.data?.moltEventId ?? `molt-telemetry-${event.id}`);
             if (telemetryMoltDetected) {
               applyMoltToCell(cell.id, event.macAddress, timestamp, telemetryMoltEventId, true);
+            }
+          }
+
+          if (event.type === 'moisture') {
+            const moistureState = String(event.data?.moistureState ?? '') as 'low' | 'high';
+            if (moistureState === 'low' || moistureState === 'high') {
+              storageUtils.updateCell(cell.id, {
+                moisture: Number(event.data?.moisture ?? cell.moisture),
+                moistureState,
+              });
+              createMoistureAlert(cell.id, event.macAddress, timestamp, moistureState);
             }
           }
 

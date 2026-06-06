@@ -30,11 +30,36 @@ export async function POST(request: NextRequest) {
     const config = esp32Store.resolveConfig(macAddress);
     const previousDevice = esp32Store.getDevice(macAddress);
     const numericConductivity = Number(conductivity);
+    const numericMoisture = Number(moisture);
     const actualLedStatus =
       ledStatus === 'on' || ledStatus === 'off' || ledStatus === 'blinking'
         ? ledStatus
         : previousDevice?.ledStatus ?? 'off';
     const hasConductivity = Number.isFinite(numericConductivity);
+    const hasMoisture = Number.isFinite(numericMoisture);
+    const conductivityHighThreshold = Math.max(
+      config.conductivityThresholdStart,
+      config.conductivityThresholdEnd
+    );
+    const conductivityLowThreshold = Math.min(
+      config.conductivityThresholdStart,
+      config.conductivityThresholdEnd
+    );
+    const moistureLowThreshold = Math.min(
+      config.moistureThresholdLow,
+      config.moistureThresholdHigh
+    );
+    const moistureHighThreshold = Math.max(
+      config.moistureThresholdLow,
+      config.moistureThresholdHigh
+    );
+    const currentMoistureState = hasMoisture
+      ? numericMoisture <= moistureLowThreshold
+        ? 'low'
+        : numericMoisture >= moistureHighThreshold
+          ? 'high'
+          : 'normal'
+      : previousDevice?.moistureState ?? 'normal';
     const telemetryIntervalMs = Math.max(config.moistureIntervalMs || 0, 1000);
     const previousTelemetryAt = previousDevice?.lastTelemetryAt
       ? new Date(previousDevice.lastTelemetryAt).getTime()
@@ -45,9 +70,9 @@ export async function POST(request: NextRequest) {
     const previousConductivity = previousDevice?.lastConductivity;
     const conductivityBelowTrigger =
       previousConductivity === undefined ||
-      previousConductivity < config.conductivityThresholdStart;
+      previousConductivity <= conductivityLowThreshold;
     const conductivityAboveTrigger =
-      hasConductivity && numericConductivity >= config.conductivityThresholdStart;
+      hasConductivity && numericConductivity >= conductivityHighThreshold;
     const inferredMolt =
       hasConductivity &&
       (moltDetected ||
@@ -70,7 +95,9 @@ export async function POST(request: NextRequest) {
       lastConductivity: hasConductivity
         ? numericConductivity
         : previousDevice?.lastConductivity,
+      lastMoisture: hasMoisture ? numericMoisture : previousDevice?.lastMoisture,
       ledStatus: actualLedStatus,
+      moistureState: currentMoistureState,
     });
 
     let telemetryEventId: number | undefined;
@@ -88,6 +115,7 @@ export async function POST(request: NextRequest) {
           humidity: Number.isFinite(humidity) ? humidity : mockHumidity(),
           signalStrength,
           ledStatus: actualLedStatus,
+          moistureState: currentMoistureState,
           moltDetected: inferredMolt,
           moltEventId: inferredMoltEventId,
         },
@@ -115,6 +143,24 @@ export async function POST(request: NextRequest) {
         macAddress,
         moltEventId,
         timestamp,
+      });
+    }
+
+    if (
+      hasMoisture &&
+      currentMoistureState !== 'normal' &&
+      currentMoistureState !== (previousDevice?.moistureState ?? 'normal')
+    ) {
+      esp32Store.addEvent({
+        type: 'moisture',
+        macAddress,
+        timestamp,
+        data: {
+          moisture: numericMoisture,
+          moistureState: currentMoistureState,
+          lowThreshold: moistureLowThreshold,
+          highThreshold: moistureHighThreshold,
+        },
       });
     }
 

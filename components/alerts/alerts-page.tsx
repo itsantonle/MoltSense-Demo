@@ -3,16 +3,14 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useMoltSense } from '@/lib/hooks/useMoltSense';
-import { Bell, AlertCircle, CheckCircle, Trash2 } from 'lucide-react';
+import { Bell, AlertCircle, CheckCircle, Droplets, Trash2 } from 'lucide-react';
 import gsap from 'gsap';
 import { useRef, useEffect } from 'react';
 
 export function AlertsPage() {
   const { alerts, cells, markAlertAsRead, clearAllAlerts, isLoading } =
     useMoltSense();
-  const [filter, setFilter] = useState<'all' | 'unread' | 'molt' | 'error'>(
-    'all'
-  );
+  const [filter, setFilter] = useState<'all' | 'unread' | 'molt' | 'moisture' | 'error'>('all');
   const bellRef = useRef<HTMLDivElement>(null);
 
   // Bell animation for new alerts
@@ -41,6 +39,8 @@ export function AlertsPage() {
   const filteredAlerts = alerts.filter((alert) => {
     if (filter === 'unread') return !alert.read;
     if (filter === 'molt') return alert.type === 'molt';
+    if (filter === 'moisture')
+      return alert.type === 'moisture_low' || alert.type === 'moisture_high';
     if (filter === 'error')
       return alert.type === 'sensor_error' || alert.type === 'offline';
     return true;
@@ -48,14 +48,27 @@ export function AlertsPage() {
 
   const getAlertIcon = (type: string) => {
     if (type === 'molt') return <Bell className="w-5 h-5" />;
+    if (type === 'moisture_low' || type === 'moisture_high')
+      return <Droplets className="w-5 h-5" />;
     if (type === 'sensor_error') return <AlertCircle className="w-5 h-5" />;
     return <AlertCircle className="w-5 h-5" />;
   };
 
   const getAlertColor = (type: string) => {
     if (type === 'molt') return 'text-teal-400 bg-teal-500/10';
+    if (type === 'moisture_low') return 'text-amber-400 bg-amber-500/10';
+    if (type === 'moisture_high') return 'text-cyan-400 bg-cyan-500/10';
     if (type === 'sensor_error') return 'text-yellow-400 bg-yellow-500/10';
     return 'text-red-400 bg-red-500/10';
+  };
+
+  const getAlertLabel = (type: string) => {
+    if (type === 'molt') return 'Molt Detected';
+    if (type === 'moisture_low') return 'Low Moisture';
+    if (type === 'moisture_high') return 'High Moisture';
+    if (type === 'sensor_error') return 'Sensor Error';
+    if (type === 'offline') return 'Offline';
+    return 'Alert';
   };
 
   if (isLoading) {
@@ -111,6 +124,7 @@ export function AlertsPage() {
                 { label: 'All', value: 'all' as const },
                 { label: 'Unread', value: 'unread' as const },
                 { label: 'Molts', value: 'molt' as const },
+                { label: 'Moisture', value: 'moisture' as const },
                 { label: 'Errors', value: 'error' as const },
               ].map((f) => (
                 <button
@@ -176,7 +190,7 @@ export function AlertsPage() {
                       <div className="flex items-start justify-between mb-2">
                         <div>
                           <p className="font-bold text-slate-100">
-                            {getCellName(alert.cellId, alert.macAddress)} - {alert.type === 'molt' ? 'Molt Detected' : 'Error'}
+                            {getCellName(alert.cellId, alert.macAddress)} - {getAlertLabel(alert.type)}
                           </p>
                           <p className="text-sm text-slate-400 mt-1">
                             {alert.message}

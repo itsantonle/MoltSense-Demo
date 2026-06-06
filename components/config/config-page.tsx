@@ -1,11 +1,21 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from 'react';
 import { motion } from 'framer-motion';
 import { CheckCircle2, Layers, RefreshCw, Save, Settings2, Zap } from 'lucide-react';
 import { useMoltSense } from '@/lib/hooks/useMoltSense';
 import { updateEsp32Config } from '@/lib/esp32';
 import { storageUtils, Esp32Config, Rack, Cell, RackSet } from '@/lib/localStorage';
+import { DurationField } from '@/components/config/duration-field';
+import {
+  applyWaterPreset,
+  CONDUCTIVITY_UNIT,
+  MOISTURE_UNIT,
+  WATER_PRESETS,
+  formatConductivityWindow,
+  formatDuration,
+  formatMoistureWindow,
+} from '@/lib/esp32-config-ui';
 
 type ConfigDraft = {
   conductivityThresholdStart: string;
@@ -99,10 +109,11 @@ const normalizeDraft = (draft: ConfigDraft, fallback: Esp32Config): Esp32Config 
 
 const normalizeWindow = (config: Esp32Config): Esp32Config => {
   const next = { ...config };
-  if (next.conductivityThresholdStart > next.conductivityThresholdEnd) {
-    const start = next.conductivityThresholdStart;
-    next.conductivityThresholdStart = next.conductivityThresholdEnd;
-    next.conductivityThresholdEnd = start;
+  if (next.conductivityThresholdStart < next.conductivityThresholdEnd) {
+    const triggerHigh = next.conductivityThresholdEnd;
+    const resetLow = next.conductivityThresholdStart;
+    next.conductivityThresholdStart = triggerHigh;
+    next.conductivityThresholdEnd = resetLow;
   }
   if (next.moistureThresholdLow > next.moistureThresholdHigh) {
     const low = next.moistureThresholdLow;
@@ -110,12 +121,6 @@ const normalizeWindow = (config: Esp32Config): Esp32Config => {
     next.moistureThresholdHigh = low;
   }
   return next;
-};
-
-const formatMs = (value: number) => {
-  if (value >= 60_000) return `${Math.round(value / 60_000)} min`;
-  if (value >= 1000) return `${Math.round(value / 1000)} sec`;
-  return `${value} ms`;
 };
 
 const toSetCellCount = (set: RackSet, racks: Rack[], cells: Cell[]) => {
@@ -131,6 +136,18 @@ const toSetEffectiveConfig = (set: RackSet, globalConfig: Esp32Config): Esp32Con
     ...globalConfig,
     ...(storageUtils.getSetEsp32Config(set.id) ?? {}),
   });
+};
+
+const applyPresetToDraft = (presetId: string, setGlobalDraft: Dispatch<SetStateAction<ConfigDraft>>) => {
+  const preset = WATER_PRESETS.find((item) => item.id === presetId);
+  if (!preset) return;
+  setGlobalDraft((prev) => ({
+    ...prev,
+    conductivityThresholdStart: String(preset.conductivityThresholdStart),
+    conductivityThresholdEnd: String(preset.conductivityThresholdEnd),
+    moistureThresholdLow: String(preset.moistureThresholdLow),
+    moistureThresholdHigh: String(preset.moistureThresholdHigh),
+  }));
 };
 
 export function ConfigPage() {
@@ -275,7 +292,7 @@ export function ConfigPage() {
             },
             {
               label: 'Global cooldown',
-              value: formatMs(globalConfig.moltCooldownMs),
+              value: formatDuration(globalConfig.moltCooldownMs),
               icon: RefreshCw,
               tone: 'from-slate-500/10 to-slate-700/10 border-slate-600/40',
             },
@@ -324,127 +341,153 @@ export function ConfigPage() {
             </button>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <div className="rounded-lg border border-slate-700/60 bg-slate-900/50 p-4">
-              <p className="text-xs text-slate-400 mb-2">Molting at (conductivity window)</p>
-              <div className="flex items-center gap-2">
-                <input
-                  type="number"
-                  value={globalDraft.conductivityThresholdStart}
-                  onChange={(event) =>
-                    setGlobalDraft((prev) => ({
-                      ...prev,
-                      conductivityThresholdStart: event.target.value,
-                    }))
-                  }
-                  className="w-full rounded bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-slate-100"
-                  placeholder="Start"
-                />
-                <span className="text-slate-500 text-sm">to</span>
-                <input
-                  type="number"
-                  value={globalDraft.conductivityThresholdEnd}
-                  onChange={(event) =>
-                    setGlobalDraft((prev) => ({
-                      ...prev,
-                      conductivityThresholdEnd: event.target.value,
-                    }))
-                  }
-                  className="w-full rounded bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-slate-100"
-                  placeholder="End"
-                />
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              {WATER_PRESETS.map((preset) => (
+                <button
+                  key={preset.id}
+                  onClick={() => applyPresetToDraft(preset.id, setGlobalDraft)}
+                  className="rounded-lg border border-slate-700/60 bg-slate-900/60 p-4 text-left hover:border-cyan-500/50 transition-colors"
+                >
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <p className="text-sm font-semibold text-slate-100">{preset.label}</p>
+                    <span className="text-[11px] text-cyan-300">{preset.rangeLabel}</span>
+                  </div>
+                  <p className="text-xs text-slate-400">{preset.description}</p>
+                </button>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <div className="rounded-lg border border-slate-700/60 bg-slate-900/50 p-4">
+                <div className="flex items-center justify-between gap-3 mb-2">
+                  <div>
+                    <p className="text-xs text-slate-400">Molt trigger band</p>
+                    <p className="text-[11px] text-slate-500">
+                      Fire when conductivity rises above the high threshold and re-arm once it
+                      falls to the low threshold.
+                    </p>
+                  </div>
+                  <span className="text-[11px] text-cyan-300">{CONDUCTIVITY_UNIT}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    value={globalDraft.conductivityThresholdStart}
+                    onChange={(event) =>
+                      setGlobalDraft((prev) => ({
+                        ...prev,
+                        conductivityThresholdStart: event.target.value,
+                      }))
+                    }
+                    className="w-full rounded bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-slate-100"
+                    placeholder="300"
+                  />
+                  <span className="text-slate-500 text-sm">to</span>
+                  <input
+                    type="number"
+                    value={globalDraft.conductivityThresholdEnd}
+                    onChange={(event) =>
+                      setGlobalDraft((prev) => ({
+                        ...prev,
+                        conductivityThresholdEnd: event.target.value,
+                      }))
+                    }
+                    className="w-full rounded bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-slate-100"
+                    placeholder="200"
+                  />
+                </div>
+                <p className="mt-2 text-xs text-slate-500">
+                  {formatConductivityWindow(globalConfig)}
+                </p>
+              </div>
+
+              <div className="rounded-lg border border-slate-700/60 bg-slate-900/50 p-4">
+                <div className="flex items-center justify-between gap-3 mb-2">
+                  <div>
+                    <p className="text-xs text-slate-400">Moisture alert band</p>
+                    <p className="text-[11px] text-slate-500">
+                      Values inside this band are treated as normal moisture.
+                    </p>
+                  </div>
+                  <span className="text-[11px] text-cyan-300">{MOISTURE_UNIT}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    value={globalDraft.moistureThresholdLow}
+                    onChange={(event) =>
+                      setGlobalDraft((prev) => ({
+                        ...prev,
+                        moistureThresholdLow: event.target.value,
+                      }))
+                    }
+                    className="w-full rounded bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-slate-100"
+                    placeholder="30"
+                  />
+                  <span className="text-slate-500 text-sm">/</span>
+                  <input
+                    type="number"
+                    value={globalDraft.moistureThresholdHigh}
+                    onChange={(event) =>
+                      setGlobalDraft((prev) => ({
+                        ...prev,
+                        moistureThresholdHigh: event.target.value,
+                      }))
+                    }
+                    className="w-full rounded bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-slate-100"
+                    placeholder="80"
+                  />
+                </div>
+                <p className="mt-2 text-xs text-slate-500">
+                  {formatMoistureWindow(globalConfig)}
+                </p>
               </div>
             </div>
 
-            <div className="rounded-lg border border-slate-700/60 bg-slate-900/50 p-4">
-              <p className="text-xs text-slate-400 mb-2">Low / High moisture</p>
-              <div className="flex items-center gap-2">
-                <input
-                  type="number"
-                  value={globalDraft.moistureThresholdLow}
-                  onChange={(event) =>
-                    setGlobalDraft((prev) => ({
-                      ...prev,
-                      moistureThresholdLow: event.target.value,
-                    }))
-                  }
-                  className="w-full rounded bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-slate-100"
-                  placeholder="Low"
-                />
-                <span className="text-slate-500 text-sm">/</span>
-                <input
-                  type="number"
-                  value={globalDraft.moistureThresholdHigh}
-                  onChange={(event) =>
-                    setGlobalDraft((prev) => ({
-                      ...prev,
-                      moistureThresholdHigh: event.target.value,
-                    }))
-                  }
-                  className="w-full rounded bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-slate-100"
-                  placeholder="High"
-                />
-              </div>
-            </div>
-
-            <div className="rounded-lg border border-slate-700/60 bg-slate-900/50 p-4">
-              <p className="text-xs text-slate-400 mb-2">Molt cooldown</p>
-              <input
-                type="number"
-                value={globalDraft.moltCooldownMs}
-                onChange={(event) =>
-                  setGlobalDraft((prev) => ({ ...prev, moltCooldownMs: event.target.value }))
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <DurationField
+                label="Molt cooldown"
+                helperText="Wait before the next molt alert can fire."
+                valueMs={parseNumber(globalDraft.moltCooldownMs, globalConfig.moltCooldownMs)}
+                onChange={(ms) =>
+                  setGlobalDraft((prev) => ({ ...prev, moltCooldownMs: String(ms) }))
                 }
-                className="w-full rounded bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-slate-100"
+                minValueMs={0}
               />
-              <p className="mt-2 text-xs text-slate-500">
-                Prevents duplicate molt alerts for {formatMs(globalConfig.moltCooldownMs)}.
-              </p>
-            </div>
-
-            <div className="rounded-lg border border-slate-700/60 bg-slate-900/50 p-4">
-              <p className="text-xs text-slate-400 mb-2">Sensor timing</p>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                <div>
-                  <label className="block text-[11px] text-slate-500 mb-1">Moisture poll</label>
-                  <input
-                    type="number"
-                    value={globalDraft.moistureIntervalMs}
-                    onChange={(event) =>
-                      setGlobalDraft((prev) => ({
-                        ...prev,
-                        moistureIntervalMs: event.target.value,
-                      }))
-                    }
-                    className="w-full rounded bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-slate-100"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] text-slate-500 mb-1">Conductivity poll</label>
-                  <input
-                    type="number"
-                    value={globalDraft.conductivityIntervalMs}
-                    onChange={(event) =>
-                      setGlobalDraft((prev) => ({
-                        ...prev,
-                        conductivityIntervalMs: event.target.value,
-                      }))
-                    }
-                    className="w-full rounded bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-slate-100"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] text-slate-500 mb-1">Error timeout</label>
-                  <input
-                    type="number"
-                    value={globalDraft.errorAfterMs}
-                    onChange={(event) =>
-                      setGlobalDraft((prev) => ({ ...prev, errorAfterMs: event.target.value }))
-                    }
-                    className="w-full rounded bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-slate-100"
-                  />
-                </div>
-              </div>
+              <DurationField
+                label="Moisture check every"
+                helperText="How often the ESP32 samples the moisture sensor."
+                valueMs={parseNumber(
+                  globalDraft.moistureIntervalMs,
+                  globalConfig.moistureIntervalMs
+                )}
+                onChange={(ms) =>
+                  setGlobalDraft((prev) => ({ ...prev, moistureIntervalMs: String(ms) }))
+                }
+                minValueMs={1000}
+              />
+              <DurationField
+                label="Conductivity check every"
+                helperText="How often the ESP32 samples the conductivity probe."
+                valueMs={parseNumber(
+                  globalDraft.conductivityIntervalMs,
+                  globalConfig.conductivityIntervalMs
+                )}
+                onChange={(ms) =>
+                  setGlobalDraft((prev) => ({ ...prev, conductivityIntervalMs: String(ms) }))
+                }
+                minValueMs={250}
+              />
+              <DurationField
+                label="Sensor fault timeout"
+                helperText="If conductivity stays at zero this long, the device enters error mode."
+                valueMs={parseNumber(globalDraft.errorAfterMs, globalConfig.errorAfterMs)}
+                onChange={(ms) =>
+                  setGlobalDraft((prev) => ({ ...prev, errorAfterMs: String(ms) }))
+                }
+                minValueMs={1000}
+              />
             </div>
           </div>
         </motion.section>
@@ -488,19 +531,20 @@ export function ConfigPage() {
                     </div>
                     <div className="flex flex-wrap gap-2 text-[11px] text-slate-300">
                       <span className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2 py-1">
-                        Conductivity {effectiveConfig.conductivityThresholdStart} -{' '}
-                        {effectiveConfig.conductivityThresholdEnd}
+                        {formatConductivityWindow(effectiveConfig)}
                       </span>
                       <span className="rounded-full border border-teal-500/30 bg-teal-500/10 px-2 py-1">
-                        Moisture {effectiveConfig.moistureThresholdLow} -{' '}
-                        {effectiveConfig.moistureThresholdHigh}
+                        {formatMoistureWindow(effectiveConfig)}
                       </span>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
                     <div className="rounded-lg border border-slate-700/60 bg-slate-950/40 p-3">
-                      <p className="text-[11px] text-slate-500 mb-1">Molting at (conductivity)</p>
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <p className="text-[11px] text-slate-500">Molt trigger band</p>
+                        <span className="text-[11px] text-cyan-300">{CONDUCTIVITY_UNIT}</span>
+                      </div>
                       <div className="flex items-center gap-2">
                         <input
                           type="number"
@@ -537,7 +581,10 @@ export function ConfigPage() {
                     </div>
 
                     <div className="rounded-lg border border-slate-700/60 bg-slate-950/40 p-3">
-                      <p className="text-[11px] text-slate-500 mb-1">Low / High moisture</p>
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <p className="text-[11px] text-slate-500">Moisture alert band</p>
+                        <span className="text-[11px] text-cyan-300">{MOISTURE_UNIT}</span>
+                      </div>
                       <div className="flex items-center gap-2">
                         <input
                           type="number"
@@ -573,75 +620,63 @@ export function ConfigPage() {
                       </div>
                     </div>
 
-                    <div className="rounded-lg border border-slate-700/60 bg-slate-950/40 p-3">
-                      <p className="text-[11px] text-slate-500 mb-1">Molt cooldown</p>
-                      <input
-                        type="number"
-                        value={draft.moltCooldownMs}
-                        placeholder={String(effectiveConfig.moltCooldownMs)}
-                        onChange={(event) =>
-                          setSetDrafts((prev) => ({
-                            ...prev,
-                            [set.id]: {
-                              ...draft,
-                              moltCooldownMs: event.target.value,
-                            },
-                          }))
-                        }
-                        className="w-full rounded bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-slate-100"
-                      />
-                    </div>
+                    <DurationField
+                      label="Molt cooldown"
+                      helperText="Wait before another molt alert can trigger for this set."
+                      valueMs={parseNumber(draft.moltCooldownMs, effectiveConfig.moltCooldownMs)}
+                      onChange={(ms) =>
+                        setSetDrafts((prev) => ({
+                          ...prev,
+                          [set.id]: { ...draft, moltCooldownMs: String(ms) },
+                        }))
+                      }
+                      minValueMs={0}
+                    />
 
-                    <div className="rounded-lg border border-slate-700/60 bg-slate-950/40 p-3">
-                      <p className="text-[11px] text-slate-500 mb-1">Sensor timing</p>
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                        <input
-                          type="number"
-                          value={draft.moistureIntervalMs}
-                          placeholder={String(effectiveConfig.moistureIntervalMs)}
-                          onChange={(event) =>
-                            setSetDrafts((prev) => ({
-                              ...prev,
-                              [set.id]: {
-                                ...draft,
-                                moistureIntervalMs: event.target.value,
-                              },
-                            }))
-                          }
-                          className="w-full rounded bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-slate-100"
-                        />
-                        <input
-                          type="number"
-                          value={draft.conductivityIntervalMs}
-                          placeholder={String(effectiveConfig.conductivityIntervalMs)}
-                          onChange={(event) =>
-                            setSetDrafts((prev) => ({
-                              ...prev,
-                              [set.id]: {
-                                ...draft,
-                                conductivityIntervalMs: event.target.value,
-                              },
-                            }))
-                          }
-                          className="w-full rounded bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-slate-100"
-                        />
-                        <input
-                          type="number"
-                          value={draft.errorAfterMs}
-                          placeholder={String(effectiveConfig.errorAfterMs)}
-                          onChange={(event) =>
-                            setSetDrafts((prev) => ({
-                              ...prev,
-                              [set.id]: {
-                                ...draft,
-                                errorAfterMs: event.target.value,
-                              },
-                            }))
-                          }
-                          className="w-full rounded bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-slate-100"
-                        />
-                      </div>
-                    </div>
+                    <DurationField
+                      label="Moisture check every"
+                      helperText="How often the ESP32 reads the mapped moisture percentage."
+                      valueMs={parseNumber(
+                        draft.moistureIntervalMs,
+                        effectiveConfig.moistureIntervalMs
+                      )}
+                      onChange={(ms) =>
+                        setSetDrafts((prev) => ({
+                          ...prev,
+                          [set.id]: { ...draft, moistureIntervalMs: String(ms) },
+                        }))
+                      }
+                      minValueMs={1000}
+                    />
+
+                    <DurationField
+                      label="Conductivity check every"
+                      helperText="How often the ESP32 checks the conductivity window."
+                      valueMs={parseNumber(
+                        draft.conductivityIntervalMs,
+                        effectiveConfig.conductivityIntervalMs
+                      )}
+                      onChange={(ms) =>
+                        setSetDrafts((prev) => ({
+                          ...prev,
+                          [set.id]: { ...draft, conductivityIntervalMs: String(ms) },
+                        }))
+                      }
+                      minValueMs={250}
+                    />
+
+                    <DurationField
+                      label="Sensor fault timeout"
+                      helperText="If conductivity stays at zero this long, the set enters error mode."
+                      valueMs={parseNumber(draft.errorAfterMs, effectiveConfig.errorAfterMs)}
+                      onChange={(ms) =>
+                        setSetDrafts((prev) => ({
+                          ...prev,
+                          [set.id]: { ...draft, errorAfterMs: String(ms) },
+                        }))
+                      }
+                      minValueMs={1000}
+                    />
                   </div>
 
                   <div className="flex flex-wrap gap-2 mt-4">

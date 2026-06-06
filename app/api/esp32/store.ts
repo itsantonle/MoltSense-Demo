@@ -3,6 +3,7 @@ export type Esp32EventType =
   | 'undiscovered'
   | 'telemetry'
   | 'molt'
+  | 'moisture'
   | 'error'
   | 'ack';
 
@@ -19,11 +20,13 @@ export interface Esp32DeviceState {
   registered: boolean;
   lastSeen: string;
   ledStatus: 'on' | 'off' | 'blinking';
+  moistureState?: 'low' | 'normal' | 'high';
   lastMoltAt?: string;
   lastTelemetryAt?: string;
   errorState?: boolean;
   signalStrength?: number;
   lastConductivity?: number;
+  lastMoisture?: number;
 }
 
 export interface Esp32Config {
@@ -46,23 +49,51 @@ interface Esp32Store {
 }
 
 const DEFAULT_CONFIG: Esp32Config = {
-  conductivityThresholdStart: 180,
+  conductivityThresholdStart: 300,
   conductivityThresholdEnd: 200,
-  moistureThresholdLow: 45,
+  moistureThresholdLow: 30,
   moistureThresholdHigh: 80,
-  moltCooldownMs: 30 * 60 * 1000,
-  moistureIntervalMs: 60000,
-  conductivityIntervalMs: 300,
+  moltCooldownMs: 0,
+  moistureIntervalMs: 5000,
+  conductivityIntervalMs: 500,
   errorAfterMs: 7 * 24 * 60 * 60 * 1000,
 };
 
-const MIN_HEARTBEAT_INTERVAL_MS = 60000;
+const MIN_SENSOR_INTERVAL_MS = 1000;
 
 const clampConfig = (updates: Partial<Esp32Config>): Partial<Esp32Config> => ({
   ...updates,
   ...(updates.moistureIntervalMs === undefined
     ? {}
-    : { moistureIntervalMs: Math.max(updates.moistureIntervalMs, MIN_HEARTBEAT_INTERVAL_MS) }),
+    : { moistureIntervalMs: Math.max(updates.moistureIntervalMs, MIN_SENSOR_INTERVAL_MS) }),
+});
+
+const toCompleteConfig = (config?: Partial<Esp32Config>): Esp32Config => ({
+  conductivityThresholdStart:
+    config?.conductivityThresholdStart ?? DEFAULT_CONFIG.conductivityThresholdStart,
+  conductivityThresholdEnd:
+    config?.conductivityThresholdEnd ?? DEFAULT_CONFIG.conductivityThresholdEnd,
+  moistureThresholdLow: config?.moistureThresholdLow ?? DEFAULT_CONFIG.moistureThresholdLow,
+  moistureThresholdHigh: config?.moistureThresholdHigh ?? DEFAULT_CONFIG.moistureThresholdHigh,
+  moltCooldownMs: config?.moltCooldownMs ?? DEFAULT_CONFIG.moltCooldownMs,
+  moistureIntervalMs: config?.moistureIntervalMs ?? DEFAULT_CONFIG.moistureIntervalMs,
+  conductivityIntervalMs:
+    config?.conductivityIntervalMs ?? DEFAULT_CONFIG.conductivityIntervalMs,
+  errorAfterMs: config?.errorAfterMs ?? DEFAULT_CONFIG.errorAfterMs,
+});
+
+const normalizeConfigWindow = (config: Esp32Config): Esp32Config => ({
+  ...config,
+  conductivityThresholdStart: Math.max(
+    config.conductivityThresholdStart,
+    config.conductivityThresholdEnd
+  ),
+  conductivityThresholdEnd: Math.min(
+    config.conductivityThresholdStart,
+    config.conductivityThresholdEnd
+  ),
+  moistureThresholdLow: Math.min(config.moistureThresholdLow, config.moistureThresholdHigh),
+  moistureThresholdHigh: Math.max(config.moistureThresholdLow, config.moistureThresholdHigh),
 });
 
 const getStore = (): Esp32Store => {
@@ -90,7 +121,9 @@ export const esp32Store = {
   },
   setConfig: (updates: Partial<Esp32Config>) => {
     const store = getStore();
-    store.config = { ...store.config, ...clampConfig(updates) };
+    store.config = normalizeConfigWindow(
+      toCompleteConfig({ ...store.config, ...clampConfig(updates) })
+    );
   },
   setDeviceConfig: (macAddress: string, updates: Partial<Esp32Config>) => {
     const store = getStore();
@@ -105,7 +138,9 @@ export const esp32Store = {
   },
   resolveConfig: (macAddress: string) => {
     const store = getStore();
-    return { ...store.config, ...(store.deviceConfigs[macAddress] ?? {}) };
+    return normalizeConfigWindow(
+      toCompleteConfig({ ...store.config, ...(store.deviceConfigs[macAddress] ?? {}) })
+    );
   },
   getDevice: (macAddress: string) => {
     const store = getStore();
@@ -120,7 +155,9 @@ export const esp32Store = {
       registered: existing?.registered ?? false,
       lastSeen: existing?.lastSeen ?? now,
       ledStatus: existing?.ledStatus ?? 'off',
+      moistureState: existing?.moistureState,
       lastTelemetryAt: existing?.lastTelemetryAt,
+      lastMoisture: existing?.lastMoisture,
       ...updates,
     };
     return store.devices[macAddress];
