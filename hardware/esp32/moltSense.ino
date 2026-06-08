@@ -22,10 +22,10 @@
 const char* WIFI_SSID = "ssid";
 const char* WIFI_PASS = "password";
 const char* BASE_URL = "https://molt-sense.vercel.app";
-const char* MQTT_BROKER_HOST = "broker";
+const char* MQTT_BROKER_HOST ="brokerulr";
 const uint16_t MQTT_BROKER_PORT = 8883;
-const char* MQTT_USERNAME = "user";
-const char* MQTT_PASSWORD = "pass";
+const char* MQTT_USERNAME = "mqtt";
+const char* MQTT_PASSWORD = "mqttpassw";
 const unsigned long HEARTBEAT_INTERVAL_MS = 60UL * 1000UL;
 const unsigned long BUZZER_DURATION_MS = 5000UL;
 const unsigned long LED_BLINK_INTERVAL_MS = 500UL;
